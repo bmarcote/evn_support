@@ -38,7 +38,7 @@ try:
     # No necessary but it would look better in the output
     msdata = arguments.msdata[:-1] if arguments.msdata[-1]=='/' else arguments.msdata
 except ImportError:
-    usage = "%prog [-h] measurement_setj"
+    usage = "%prog [-h] measurement_set"
     description="""Change the MOUNT field in the ANTENNA table for Ys to 'ALT-AZ-NASMYTH-RH'.
     It allows tConvert to put MNTSTA=4 into the FITS AN table, to handle the
     parallactic angle correction for Ys's Nasmyth focus correctly.
