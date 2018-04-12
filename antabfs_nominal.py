@@ -4,7 +4,15 @@
 # python 2 at the moment for raw_input
 # Jay Blanchard 2016
 # Benito 2016
-# Improved version with:
+# 
+# Version: 3.0
+# Date: 2018/04/12
+#
+# What's new in v. 3.0
+# - new argument to set the freq. interval
+# - 
+#
+# What's new in v. 2.0
 # - interactive or argument-based
 # - documentation!!
 # - Takes SEFD values from status table of EVN
@@ -27,6 +35,7 @@ parser.add_argument('experiment', type=str, default=None, help='Experiment name'
 parser.add_argument('start', type=str, default=None, help='Start time (DOY/HH:MM, YYYY/DOY/HH:MM or YYYY/MM/DD/HH:MM)')
 parser.add_argument('-d', '--duration', type=float, default=24, help='Duration of the experiment (in hours). Default: 24 h')
 parser.add_argument('-b', '--band', type=str, default=None, help='Observed band (in cm). Optional only if SEFD provided')
+parser.add_argument('-fr', '--freqrange', type=list, default=[100,100000], help='Frequency range where the ANTAB is applicable. Default 100-100000.')
 parser.add_argument('-s', '--sefd', type=float, default=None, help='SEFD to be used (optional). Default values are loaded.')
 parser.add_argument('-i', '--interval', type=float, default=0.25, help='Interval between Tsys measurements (in min). Default: 0.5')
 parser.add_argument('-sb', '--subbands', type=int, default=8, help='Number of subbands in the experiment. Default: 8 = L1|R1 L2|R2 ... L8|R8')
@@ -66,7 +75,7 @@ def index_header():
     return ','.join(indexes)
 
 
-def get_header(antenna, gain):
+def get_header(antenna, gain, freqrange):
     """Returns the apropiate header for the given antenna using a given gain value.
     
     Inputs:
@@ -79,12 +88,13 @@ def get_header(antenna, gain):
 ! Nominal calibration data for {ant} by tsys_nominal.py.
 ! tsys_nominal.py version 2.0, 2016 August 3, BM & JB
 !
-GAIN {ant} ELEV DPFU={gain},{gain} POLY=1.0 FREQ=100,100000
+GAIN {ant} ELEV DPFU={gain},{gain} POLY=1.0 FREQ={freqrange}
 /
 TSYS {ant} FT=1.0 TIMEOFF=0
 INDEX = {indexes}
 /'''
-    return generic_header.format(ant=antenna[:2].upper(), gain=gain, indexes=index_header())
+    return generic_header.format(ant=antenna[:2].upper(), gain=gain, indexes=index_header(),
+                                 freqrange=','.join([str(i) for i in freqrange]))
 
 
 def hm2hhmmss(hhmm):
@@ -135,8 +145,10 @@ def date2string(datetime):
 #currently asks for inputs, might change this in future to read from vex...
 if args.experiment == None:
     args.experiment = raw_input("Input experiment name: ")
+
 if args.antenna == None:
     args.antenna = raw_input("Input antenna name (two-letter syntax (except Jb1 Jb2 Ro7 Ro3): ")
+
 if args.band == None and args.sefd == None:
     output = raw_input("Input frequency band (cm) or SEFD value (Jy). Write 'band VALUE' or 'sefd VALUE'").split(' ')
     if output[0].lower() == 'band':
@@ -146,12 +158,21 @@ if args.band == None and args.sefd == None:
     else:
         print('Wrong format. It must be either: "band VALUE" or "sefd VALUE"')
         raise ValueError
+
+
 if args.start == None:
     input_starttime = raw_input("Enter start day of the year, hour and minute (comma separated):  ").split(',')
     args.start = '{} {}:{}'.format(*input_starttime)
     dur = raw_input("Enter duration (hours; enter to default): ")
     if dur != '':
         args.duration = float(dur)
+
+
+if len(args.freqrange) != 2:
+    print('The frequency range (--freqrange) must contain two values (comma-separated): the lower and upper frequency limit.')
+    sys.exit(1)
+
+
 
 
 sefd_info = read_sefd_table()
@@ -163,7 +184,8 @@ a_time = date2datetime(args.start)
 
 # Creating the ANTAB file
 antab_file = open('{}{}.antabfs'.format(args.experiment.lower(), args.antenna.lower()[:2]), 'wt')
-antab_file.write(get_header(args.antenna.lower(), 1./read_sefd_values(sefd_info, args.antenna.lower(), args.band))+'\n')
+antab_file.write(get_header(args.antenna.lower(), 1./read_sefd_values(sefd_info, args.antenna.lower(), args.band),
+                            args.freqrange)+'\n')
 
 while a_time < end_time:
    antab_file.write('{}{}\n'.format(date2string(a_time), ' 1.0'*args.subbands))
