@@ -9,14 +9,14 @@
 # Date: 2018/04/12
 #
 # What's new in v. 3.0
-# - new argument to set the freq. interval
-# - 
+# - new argument to set the freq. interval (-fr / --freqrange)
 #
 # What's new in v. 2.0
 # - interactive or argument-based
 # - documentation!!
 # - Takes SEFD values from status table of EVN
 
+import sys
 import argparse
 import datetime as dt
 from math import floor
@@ -35,7 +35,7 @@ parser.add_argument('experiment', type=str, default=None, help='Experiment name'
 parser.add_argument('start', type=str, default=None, help='Start time (DOY/HH:MM, YYYY/DOY/HH:MM or YYYY/MM/DD/HH:MM)')
 parser.add_argument('-d', '--duration', type=float, default=24, help='Duration of the experiment (in hours). Default: 24 h')
 parser.add_argument('-b', '--band', type=str, default=None, help='Observed band (in cm). Optional only if SEFD provided')
-parser.add_argument('-fr', '--freqrange', type=list, default=[100,100000], help='Frequency range where the ANTAB is applicable. Default 100-100000.')
+parser.add_argument('-fr', '--freqrange', type=str, default='100,100000', help='Frequency range where the ANTAB is applicable (lower and upper limit, in MHz). Default 100,100000 (please, do not use spaces between the numbers).')
 parser.add_argument('-s', '--sefd', type=float, default=None, help='SEFD to be used (optional). Default values are loaded.')
 parser.add_argument('-i', '--interval', type=float, default=0.25, help='Interval between Tsys measurements (in min). Default: 0.5')
 parser.add_argument('-sb', '--subbands', type=int, default=8, help='Number of subbands in the experiment. Default: 8 = L1|R1 L2|R2 ... L8|R8')
@@ -44,7 +44,7 @@ args = parser.parse_args()
 
 i_already_warn_about_seconds = False
 
-def read_sefd_table(tablename='/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'):
+def read_sefd_table(tablename='sefd_values.txt'):#'/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'):
     sefd_table = open(tablename, 'r')
     titles = sefd_table.readline().strip().split('|')
     titles = [t.strip() for t in titles]
@@ -168,11 +168,19 @@ if args.start == None:
         args.duration = float(dur)
 
 
-if len(args.freqrange) != 2:
-    print('The frequency range (--freqrange) must contain two values (comma-separated): the lower and upper frequency limit.')
+# Read and interpretate the freqrange.
+
+if args.freqrange.count(',') != 1:
+    print('The frequency range (--freqrange) must contain two values (comma-separated): the lower and upper frequency limit in MHz (please, do not use spaces between the numbers).')
     sys.exit(1)
 
+args.freqrange = [int(i) for i in args.freqrange.split(',')]
 
+if not (args.freqrange[0] < 30*1000/float(args.band) < args.freqrange[1]):
+    print('The provided frequency range must contain the frequency band, and this is not the case.')
+    print('Introduced band: {} GHz'.format(30/float(args.band)))
+    print('Introduced frequency range: {}-{} GHz'.format(args.freqrange[0]/1e3, args.freqrange[1]/1e3))
+    sys.exit(1)
 
 
 sefd_info = read_sefd_table()
@@ -195,3 +203,6 @@ antab_file.write('/\n') # antab expects trailing /
 antab_file.close()
 
 print('File {}{}.antabfs created successfully.'.format(args.experiment.lower(), args.antenna.lower()[:2]))
+
+
+
