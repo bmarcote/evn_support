@@ -8,10 +8,12 @@ Options:
     threshold : float     Visibilities with a weight below the specified
                           value will be flagged. Must be positive.
 
-Version: 1.2
-Date: Nov 2017
+Version: 1.3
+Date: Apr 2018
 Written by Benito Marcote (marcote@jive.eu)
 
+version 1.3 changes
+- Minor fixes (prog name in optparse info).
 version 1.2 changes
 - Minor fixes.
 version 1.1 changes
@@ -37,7 +39,7 @@ try:
     parser = argparse.ArgumentParser(description=description, prog='flag_weights.py', usage=usage)
     parser.add_argument('msdata', type=str, help=help_msdata)
     parser.add_argument('threshold', type=float, help=help_threshold)
-    parser.add_argument('--version', action='version', version='%(prog)s 1.2')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.3')
     parser.add_argument("-v", "--verbose", default=True, action="store_false" , help=help_v)
     arguments = parser.parse_args()
     #print('The arguments ', arguments)
@@ -50,7 +52,7 @@ except ImportError:
     """
     # Compatibility with Python 2.7 in eee
     import optparse
-    parser = optparse.OptionParser(usage=usage, description=description, prog='ysfocus.py', version='%prog 1.2')
+    parser = optparse.OptionParser(usage=usage, description=description, prog='flag_weights.py', version='%prog 1.3')
     parser.add_option("-v", action="store_false", dest="verbose", default=True, help=help_v)
     theparser = parser.parse_args()
     verbose = theparser[0].verbose
@@ -78,7 +80,8 @@ with pt.table(msdata, readonly=False) as ms:
         ms.putcol("WEIGHT", weights)
         print('Done.')
     else:
-        print('Flag has not been applied')
+        rint('Flag has not been applied.')
+
     ms.close()
 
 

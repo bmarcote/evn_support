@@ -11,7 +11,7 @@ Options:
                           use either string 'Ef, Mc' or a non-spaced str:
                           Ef,Mc,Ys.
 
-Version: 0.0a
+Version: 1.2
 Date: Dec 2017
 Written by Benito Marcote (marcote@jive.eu)
 """
