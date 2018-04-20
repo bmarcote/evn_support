@@ -29,10 +29,8 @@ try:
     parser.add_argument('new_expname', type=str, help=help_newexpname)
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')
     arguments = parser.parse_args()
-    #print('The arguments ', arguments)
-    verbose = arguments.verbose
     msdata = arguments.msdata[:-1] if arguments.msdata[-1]=='/' else arguments.msdata
-    threshold = arguments.threshold
+    new_expname = arguments.new_expname
 except ImportError:
     usage = "%(prog)s [-h] <msdata> <new_expname>"
     description="""Change the name of a project in a measurement set (MS) to new_expname (in upper case).
@@ -41,7 +39,6 @@ except ImportError:
     import optparse
     parser = optparse.OptionParser(usage=usage, description=description, prog='expname.py', version='%prog 1.0')
     theparser = parser.parse_args()
-    verbose = theparser[0].verbose
     arguments = theparser[1]
     #arguments = parser.parse_args()[1]
     if len(arguments) != 2:
@@ -53,7 +50,7 @@ except ImportError:
     new_expname = arguments[1]
 
 # The actual work
-with pt.table(msdata+'/OBSERVATION', readonly=False) as ms:
+with pt.table(msdata+'/OBSERVATION', readonly=False, ack=False) as ms:
     old_project = ms.getcol('PROJECT')[0] # Should always be one-element list
     ms.putcol('PROJECT', [new_expname.upper()])
 
