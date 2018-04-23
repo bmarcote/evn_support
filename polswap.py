@@ -1,6 +1,6 @@
 #! /usr/bin/python
 """
-Swap polarizations for specified antennas in specified subbands
+Swap polarizations for specified antennas in the specified subbands.
 
 Usage: polswap.py msdata antennas [-sb SUBBANDS]
 Options:
