@@ -21,20 +21,9 @@ version 2.0 changes
 """
 import os
 import sys
-# import stat
 import glob
 import argparse
 #from astropy.io import ascii
-
-# if len(sys.argv) != 3: #or sys.argv[1] == '-h':
-#     print('multiphase_sfxc2ms.py <expname> <targetname>')
-#     print('You need to specify the experiment name and the target source name')
-#     print('as it is without the multi-phase center labeling')
-#     print('(i.e. write only the text common to all the phase centers)')
-#     sys.exit(1)
-
-# expname = sys.argv[1].lower()
-# target = sys.argv[2]
 
 
 help_script = """Create the *sfxc2ms.sh script that runs j2ms2 to create a MS file from all the *cor files.
@@ -48,13 +37,13 @@ If no parameters are provided (apart of the mandatory, experiment name), then it
 """
 
 help_cals = """Should the calibrators be included in all measurement sets? (in the different phase centers)
-By default they are included. If you set this option then they will be removed in all but the first pha. centers.
+By default they are included. If you set this option then they will be removed in all but the first phase center.
 """
 
 help_centers = """Phase-center source names. Provide a list (comma-separated, without spaces) of all the phase centers that have been produced and need to be included in the final dataset. NO NEEDED IF --BASE-NAME IS SET.
 """
 
-help_exclude = """Phase-center source names to be excluded for the final dataset. Provide a list (comma-separated, without spaces) of those phase centers to be ignored (optional).
+help_exclude = """Phase-center source names to be excluded from the final dataset. Provide a list (comma-separated, without spaces) of those phase centers to be ignored (optional).
 """
 
 # help_base_name = """Target name (without phase center suffixes).
@@ -70,10 +59,10 @@ help_ref_station = """If you want to include the line eo_setup_ref_station:XX in
 parser = argparse.ArgumentParser(description=help_script)
 parser.add_argument('-i', '--include-cals', default=True, dest='cals_on', action='store_false', help=help_cals)
 # parser.add_argument('-c', '--phase-centers', type=str, default=None, dest='centers', help=help_centers)
-parser.add_argument('-e', '--exclude', type=str, default=[], dest='exclude', help=help_exclude)
+parser.add_argument('-e', '--exclude', type=str, default=None, dest='exclude', help=help_exclude)
 parser.add_argument('-l', '--lis', type=str, default=None, dest='lisfile', help=help_lisfile)
 # parser.add_argument('-t', '--base-name', type=str, default=None, dest='basename', help=help_base_name)
-parser.add_argument('-r', '--ref-station', type=str, default=None, dest='refstation', help=help_ref_station)
+parser.add_argument('-r', '--ref-station', type=str, default=None, dest='ref_station', help=help_ref_station)
 parser.add_argument('expname', type=str, default=None, help='Experiment name')
 
 args = parser.parse_args()
@@ -104,14 +93,23 @@ with open(lisfile, 'r') as the_lisfile:
 
 def get_j2ms2_line(outputfile, corfile, ref_station=None):
     if ref_station is not None:
-        return "j2ms2 eo:setup_ref_station={ref_station} -o {outputfile} {corfile}\n"
+        return "j2ms2 eo:setup_ref_station={} -o {} {}\n".format(ref_station, outputfile, corfile)
     else:
-        return "j2ms2 -o {outputfile} {corfile}\n"
+        return "j2ms2 -o {} {}\n".format(outputfile, corfile)
 
+
+if args.exclude is not None:
+    args.exclude = args.exclude.split(',')
 
 # Get all the cor files (including all phase-centers) ordered by scan
 for a_scan in scans_to_include:
     scanfiles = glob.glob('./*/*{}.cor*'.format(a_scan))
+    # Remove the phase centers to exclude
+    if args.exclude is not None:
+        for a_scanfile in scanfiles.copy():
+            if a_scanfile.split('_')[-1] in args.exclude:
+                scanfiles.remove(a_scanfile)
+
     files_to_include.append(scanfiles)
     if len(scanfiles) > max_number_of_phase_centers:
         max_number_of_phase_centers = len(scanfiles)
@@ -120,10 +118,27 @@ for a_scan in scans_to_include:
         print('WARNING: Scan {} listed in the lis file has not been found.'.format(a_scan))
 
 
+
 # Create all necessary lists of j2ms2 lines for each phase-center
 class Group:
-    center = ''
-    files = []
+    """Simple class that defines a center name and a list of files.
+    """
+    def __init__(self):
+        self._centername = ''
+        self._centerlist = []
+        self.files = []
+
+    @property
+    def center(self):
+        return self._centername
+
+    @center.setter
+    def center(self, name):
+        # Do not add the name is it is already in the self._centerlist
+        if name not in self._centerlist:
+            self._centerlist.append(name)
+            self._centername = '_'.join(self._centerlist)
+
 
 # Each group is defined as all the j2ms2 lines that will go to the same output (to the 'center'
 # source), by reading all the cor files listed in 'files'
@@ -135,15 +150,14 @@ for a_file in files_to_include:
         # Include calibrators in all groups or only in the first one?
         if args.cals_on:
             for a_group in groups_j2ms2:
-                a_group.files.append(a_file)
+                a_group.files.append(a_file[0])
         else:
-            groups_j2ms2[0].files.append(a_file)
+            groups_j2ms2[0].files.append(a_file[0])
     else:
-        # a scan with phase-centers
-        for i, a_center in enumerate(a_file):
+        # a scan with phase-centers, can be eny length <= max_number_of_phase_centers
+        for i, a_center in enumerate(sorted(a_file)):
             groups_j2ms2[i].files.append(a_center)
-            if groups_j2ms2[i].center == '':
-                groups_j2ms2[i].center = a_center.split('_')[-1]
+            groups_j2ms2[i].center = a_center.split('_')[-1]
 
 
 # Prepare the final sh file!
@@ -154,7 +168,7 @@ with open(expname+'_sfxc2ms.sh', 'w') as shfile:
         shfile.write('echo "Doing phase center {}"\n'.format(a_group.center))
         outfile = expname + '.ms_' + a_group.center
         for an_entry in a_group.files:
-            shfile.write(get_j2ms2_line(outfile, an_entry, args.refstation))
+            shfile.write(get_j2ms2_line(outfile, an_entry, args.ref_station))
 
 
 #os.chmod(a_file, stat.S_IREAD | stat.S_IWUSR | stat.S_IEXEC)
