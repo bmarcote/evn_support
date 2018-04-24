@@ -69,7 +69,7 @@ except ImportError:
 
 assert threshold > 0.0
 
-with pt.table(msdata, readonly=False) as ms:
+with pt.table(msdata, readonly=False, ack=False) as ms:
     weights = ms.getcol("WEIGHT")
     print('Got {0:9} weights'.format(weights.size))
     indexes = np.where(weights < threshold)
