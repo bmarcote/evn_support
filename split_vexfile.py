@@ -28,9 +28,14 @@ optional parameters:
                          be <experiment>.vex
 
 
-Version: 1.0
+Version: 1.1
 Date: May 2018
 Written by Benito Marcote (marcote@jive.eu)
+
+
+version 1.1 changes
+- Formatted strings f'..{}..' changed to '..{}..'.format() to make the code compatible with Py3.5
+ (the one available in ee).
 """
 
 import sys
@@ -87,12 +92,12 @@ assert args.firstscan <= args.lastscan
     
 vexfile = vex.Vex(args.experiment, vexfile=args.vexfile)
 if verbose:
-    print(f'{args.vexfile} has been read')
+    print('{} has been read'.format(args.vexfile))
 
 # Updating experiment name
 vexfile['GLOBAL']['EXPER'].value = args.experiment.upper()
 if verbose:
-    print(f'$GLOBAL>$EXPER updated to {args.experiment.upper()}')
+    print('$GLOBAL>$EXPER updated to{}'.format(args.experiment.upper()))
 
 oldexpname = [i for i in vexfile['EXPER'].keys() if 'comment' not in i]
 if len(oldexpname) != 1:
@@ -101,25 +106,25 @@ if len(oldexpname) != 1:
 oldexpname = oldexpname[0]
 vexfile['EXPER'][oldexpname].name = args.experiment.upper()
 if verbose:
-    print(f'$EXPER>def {oldexpname} updated to {args.experiment.upper()}')
+    print('$EXPER>def {} updated to {}'.format(oldexpname, args.experiment.upper()))
 
 vexfile['EXPER'][oldexpname]['exper_name'].value = args.experiment.upper()
 if verbose:
-    print(f'$EXPER>exper_name updated to {args.experiment.upper()}')
+    print('$EXPER>exper_name updated to {}'.format(args.experiment.upper()))
 
 
 descr = vexfile['EXPER'][oldexpname]['exper_description'].value
 if len(descr) > 1:
     if '"e-EVN' in descr[0]:
-        descr[1] = f' {args.experiment.upper()}"'
+        descr[1] = ' {}"'.format(args.experiment.upper())
 
 vexfile['EXPER'][oldexpname]['exper_description'].value = descr
 if verbose:
-    print(f'$EXPER>exper_description updated to contain only {args.experiment.upper()}')
+    print('$EXPER>exper_description updated to contain only {}'.format(args.experiment.upper()))
 
-vexfile['EXPER'][oldexpname]['PI_name'].value = f'"{args.piname}"'
+vexfile['EXPER'][oldexpname]['PI_name'].value = '"{}"'.format(args.piname)
 if verbose:
-    print(f'EXPER>PI_name updated to {args.piname}')
+    print('EXPER>PI_name updated to {}'.format(args.piname))
 
 
 # Keep sources that should be included
@@ -133,7 +138,7 @@ for a_scan in allscans:
     if (scannumber < args.firstscan) or (scannumber > args.lastscan):
         del vexfile['SCHED'][a_scan]
         if verbose:
-            print(f'Scan {a_scan} has been removed')
+            print('Scan {} has been removed'.format(a_scan))
 
     else:
         # Double checking (in case the key exists, otherwise is within the 'start' key
@@ -151,13 +156,13 @@ for a_scan in allscans:
 for a_source in allsources.difference(sources):
     del vexfile['SOURCE'][a_source]
     if verbose:
-        print(f'Source {a_source} has been removed')
+        print('Source {} has been removed'.format(a_source))
 
 
 # Write the VEX info to a file
 vexfile.to_file(outputfile)
 if verbose:
-    print(f'File {outputfile} has been written')
+    print('File {} has been written'.format(outputfile))
 
 
 
