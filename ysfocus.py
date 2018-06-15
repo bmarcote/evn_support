@@ -11,9 +11,15 @@ Options:
     msdata : str          MS data set containing the data to be flagged.
 
 
-Version: 1.0
-Date: Oct 2017
+Version: 2.0
+Date: Jun 2018
 Written by Benito Marcote (marcote@jive.eu)
+
+
+version 2.0 changes
+- Now the script works when the STATION name is also YS or HO (not only
+  YEBES40m or HOBART).
+
 """
 
 from pyrap import tables as pt
