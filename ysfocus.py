@@ -56,26 +56,22 @@ except ImportError:
     # No necessary but it would look better in the output
     msdata = arguments[0][:-1] if arguments[0][-1]=='/' else arguments[0]
 
+# The STATION name can be either the full name or the abreviation
+stations_to_change = {'YEBES40M': 'ALT-AZ-NASMYTH-RH', 'YS': 'ALT-AZ-NASMYTH-RH',
+                      'HOBART': 'X-YEW', 'HO': 'X-YEW'}
 
 
-stations_to_change = {'YEBES40M': 'ALT-AZ-NASMYTH-RH', 'HOBART': 'X-YEW'}
-# I need to check how to do this comparison with TaQL, for now this works
-# although it is stupid
-with pt.table(msdata+'/ANTENNA') as antenna_table:
-    stations = antenna_table.getcol('STATION')
-    antenna_table.close()
-    n_changes = 0
-    # Antennas known to require a change of MOUNT:
-    for a_station in stations_to_change:
-        if a_station in stations:
-            n_changes += 1
-            print('Changing {0} mount to {1}'.format(a_station, stations_to_change[a_station]))
-            pt.taql("update {0}/ANTENNA set MOUNT='{2}' where STATION == '{1}'".format(msdata,
-                                                    a_station, stations_to_change[a_station]))
-            print('Done.')
+antennas = set(pt.table(pt.table(msdata, readonly=True, ack=False).getkeyword('ANTENNA'), ack=False).getcol('STATION'))
+antennas = antennas.intersection(stations_to_change.keys())
 
-    if n_changes == 0:
-        print("Neither Ys nor Ho found in the MS, exiting without action.")
+for a_station in antennas:
+    print('Changing {0} mount to {1}'.format(a_station, stations_to_change[a_station]))
+    pt.taql("update {0}/ANTENNA set MOUNT='{2}' where STATION == '{1}'".format(msdata,
+            a_station, stations_to_change[a_station]))
 
-
+if len(antennas) == 0:
+    print("Neither Ys nor Ho found in the MS, exiting without action.")
+else:
+    print('\nDone.')
+    
 
