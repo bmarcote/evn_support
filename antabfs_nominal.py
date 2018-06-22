@@ -1,15 +1,18 @@
-#!/usr/bin/python3
+#!/opt/local/bin/python3
+####!/usr/bin/python3
 """
 Python port of Bob Campbell's IDL script to make nominal tsys tables.
 It takes the nominal SEFD values from the sefd_values.txt table and generates an ANTAB file using
 these values. Gains will be set to 1/SEFD, and all Tsys to 1.0.
 Note that it will overwrite any existing ANTAB file in the current path.
  
-Version: 4.0
+Version: 4.2
 Date: June 2018
 Author: Benito Marcote (marcote@jive.eu) & Jay Blanchard (blanchard@jive.eu)
 
 
+version 4.2 changes
+- Explicit error if antenna or freq. is not known
 version 4.1 changes
 - Minor issues (ordering input arguments, version)
 version 4.0 changes
@@ -29,7 +32,7 @@ from math import floor
 from collections import defaultdict
 
 
-
+__version__ = 4.2
 help_str = """Writes a nominal SEFD ANTAB file. Gain will be set to 1/SEFD, and all Tsys to 1.0.
 It will overwrite any previous antab file in the current path.
 antabfs_nominal.py uses the SEFD information from sefd_values.txt to compute the nominal values.
@@ -40,7 +43,7 @@ parser = argparse.ArgumentParser(description=help_str, prog='antabfs_nominal.py'
 parser.add_argument('antenna', type=str, default=None, help='Antenna name (two-letters syntax, except for Jb1 Jb2 Ro7 Ro3)')
 parser.add_argument('experiment', type=str, default=None, help='Experiment name')
 parser.add_argument('start', type=str, default=None, help='Start time (DOY/HH:MM, YYYY/DOY/HH:MM or YYYY/MM/DD/HH:MM)')
-parser.add_argument('-v', '--version', action='version', version='%(prog)s 4.1')
+parser.add_argument('-v', '--version', action='version', version='%(prog)s {}'.format(__version__))
 parser.add_argument('-b', '--band', type=str, default=None, help='Observed band (in cm). REQUIRED unless SEFD provided')
 parser.add_argument('-d', '--duration', type=float, default=24, help='Duration of the experiment (in hours). Default: 24 h')
 parser.add_argument('-fr', '--freqrange', type=str, default='100,100000', help='Frequency range where the ANTAB is applicable (lower and upper limit, in MHz). Default 100,100000 (please, do not use spaces between the numbers).')
@@ -52,14 +55,14 @@ args = parser.parse_args()
 
 i_already_warn_about_seconds = False
 
-# def read_sefd_table(tablename='sefd_values.txt'):#'/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'):
-def read_sefd_table(tablename='/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'):
+# def read_sefd_table(tablename='/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'):
+def read_sefd_table(tablename='sefd_values.txt'):
     sefd_table = open(tablename, 'r')
     titles = sefd_table.readline().strip().split('|')
     titles = [t.strip() for t in titles]
     sefd_dict = defaultdict(dict)
     for an_ant in sefd_table.readlines():
-        values = [ t.strip() for t in an_ant.strip().split('|')]
+        values = [t.strip() for t in an_ant.strip().split('|')]
         for i in range(1, len(values)):
             if values[i] != '':
                 sefd_dict[values[0].lower()][titles[i]] = float(values[i])
@@ -68,15 +71,16 @@ def read_sefd_table(tablename='/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'
 
 
 def read_sefd_values(table, antenna, band):
-    try:
-        return table[antenna][band]
-    except KeyError:
-        if antenna not in table:
-            print('ERROR: {} is not available.\n'.format(antenna))
-            print('The available antennas are: ', ' '.join(table.keys()))
-        else:
-            print('ERROR: antenna {} does not have SEFD information for {}-cm observations'.format(antenna, band))
+    if antenna not in table:
+        print('ERROR: {} is not available.\n'.format(antenna))
+        print('The available antennas are: {}'.format(' '.join(table.keys())))
         sys.exit(1)
+    elif band not in table[antenna]:
+        print('ERROR: antenna {} does not have SEFD information for {}-cm observations'.format(antenna, band))
+        print('{} only has SEFD information for {} cm'.format(antenna, ', '.join(table[antenna].keys())))
+        sys.exit(1)
+    else:
+        return table[antenna][band]
 
 
 def index_header():
@@ -96,8 +100,9 @@ def get_header(antenna, gain, freqrange):
         The gain (in 1/Jy) for this antenna
     """
     generic_header = '''!
-! Nominal calibration data for {ant} by tsys_nominal.py.
-! tsys_nominal.py version 2.0, 2016 August 3, BM & JB
+! Nominal calibration data for {ant} created by
+! antabfs_nominal.py (version {version})
+! Script at JIVE done by Benito Marcote & Jay Blanchard
 !
 GAIN {ant} ELEV DPFU={gain},{gain} POLY=1.0 FREQ={freqrange}
 /
@@ -105,7 +110,7 @@ TSYS {ant} FT=1.0 TIMEOFF=0
 INDEX = {indexes}
 /'''
     return generic_header.format(ant=antenna[:2].upper(), gain=gain, indexes=index_header(),
-                                 freqrange=','.join([str(i) for i in freqrange]))
+                       version=__version__, freqrange=','.join([str(i) for i in freqrange]))
 
 
 def hm2hhmmss(hhmm):
@@ -122,6 +127,7 @@ def hm2hhmmss(hhmm):
     minute = float(minute)
     second = int((minute-floor(minute))*60)
     return int(hour), int(floor(minute)), second
+
 
 def date2datetime(date):
     """Convert the given date to DOY, HH, MM.
@@ -140,9 +146,8 @@ def date2datetime(date):
         year, month, day, hhmm = date.split('/')
         return dt.datetime(int(year), int(month), int(day), *hm2hhmmss(hhmm))
     else:
-        print('Error: date must have the following format: DOY/HH:MM, YYYY/DOY/HH:MM or YYYY/MM/DD:HH:MM')
+        print('ERROR: date must have the following format: DOY/HH:MM, YYYY/DOY/HH:MM or YYYY/MM/DD:HH:MM')
         raise SyntaxError
-
 
 
 
@@ -195,7 +200,6 @@ if not (args.freqrange[0] < 30*1000/float(args.band) < args.freqrange[1]):
 
 
 sefd_info = read_sefd_table()
-
 
 start_time = date2datetime(args.start)
 end_time = start_time + dt.timedelta(args.duration/24.)
