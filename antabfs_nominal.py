@@ -76,7 +76,6 @@ def read_sefd_values(table, antenna, band):
             print('The available antennas are: ', ' '.join(table.keys()))
         else:
             print('ERROR: antenna {} does not have SEFD information for {}-cm observations'.format(antenna, band))
-    finally:
         sys.exit(1)
 
 
@@ -116,7 +115,7 @@ def hm2hhmmss(hhmm):
     except ValueError:
         if not i_already_warn_about_seconds:
             print('WARNING: only HH:MM are read. Seconds or other smaller numbers are going to be ignored.')
-            i_already_warn_about_seconds  = True
+            i_already_warn_about_seconds = True
 
         hour, minute, *others = hhmm.split(':')
 
