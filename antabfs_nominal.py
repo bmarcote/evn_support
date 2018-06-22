@@ -1,20 +1,26 @@
 #!/usr/bin/python3
+"""
+Python port of Bob Campbell's IDL script to make nominal tsys tables.
+It takes the nominal SEFD values from the sefd_values.txt table and generates an ANTAB file using
+these values. Gains will be set to 1/SEFD, and all Tsys to 1.0.
+Note that it will overwrite any existing ANTAB file in the current path.
+ 
+Version: 4.0
+Date: June 2018
+Author: Benito Marcote (marcote@jive.eu) & Jay Blanchard (blanchard@jive.eu)
 
-# python port of Bob Campbells IDL script to make fake tsys tables...
-# python 2 at the moment for raw_input
-# Jay Blanchard 2016
-# Benito 2016
-# 
-# Version: 3.0
-# Date: 2018/04/12
-#
-# What's new in v. 3.0
-# - new argument to set the freq. interval (-fr / --freqrange)
-#
-# What's new in v. 2.0
-# - interactive or argument-based
-# - documentation!!
-# - Takes SEFD values from status table of EVN
+
+version 4.0 changes
+- Major code changes for a better exception handling 
+
+version 3.0 changes
+- new argument to set the freq. interval (-fr / --freqrange)
+
+version 2.0 changes
+- interactive or argument-based
+- documentation!!
+- Takes SEFD values from status table of EVN
+"""
 
 import sys
 import argparse
@@ -22,13 +28,15 @@ import datetime as dt
 from math import floor
 from collections import defaultdict
 
-#Usage: SEFD.pl <SEFD> <DOY> <experiment name> <telescope>
 
 
-help_str = """This script will write a nominal SEFD ANTAB format file.
-    Gain will be set to 1/SEFD, and all Tsys to 1.0.
-    It will overwrite any previous antab file in the current path.
-    """
+help_str = """Writes a nominal SEFD ANTAB file. Gain will be set to 1/SEFD, and all Tsys to 1.0.
+It will overwrite any previous antab file in the current path.
+antabfs_nominal.py uses the SEFD information from sefd_values.txt to compute the nominal values.
+
+Creates (or overwrites) a file called <experiment><antenna>.antabfs, where <experiment> and
+<antenna> are the input from the user.
+"""
 parser = argparse.ArgumentParser(description='help_str')
 parser.add_argument('antenna', type=str, default=None, help='Antenna name (two-letters syntax, except for Jb1 Jb2 Ro7 Ro3)')
 parser.add_argument('experiment', type=str, default=None, help='Experiment name')
@@ -63,10 +71,13 @@ def read_sefd_values(table, antenna, band):
     try:
         return table[antenna][band]
     except KeyError:
-        print('Error: either the antenna does not exist or it does not have information at that band.')
-        print('Available antennas with code:')
-        print(' '.join(table.keys()))
-        raise KeyError
+        if antenna not in table:
+            print('ERROR: {} is not available.\n'.format(antenna))
+            print('The available antennas are: ', ' '.join(table.keys()))
+        else:
+            print('ERROR: antenna {} does not have SEFD information for {}-cm observations'.format(antenna, band))
+    finally:
+        sys.exit(1)
 
 
 def index_header():
