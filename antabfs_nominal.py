@@ -6,11 +6,12 @@ It takes the nominal SEFD values from the sefd_values.txt table and generates an
 these values. Gains will be set to 1/SEFD, and all Tsys to 1.0.
 Note that it will overwrite any existing ANTAB file in the current path.
  
-Version: 4.2
-Date: June 2018
+Version: 4.3
+Date: Sep 2018
 Author: Benito Marcote (marcote@jive.eu) & Jay Blanchard (blanchard@jive.eu)
 
-
+version 4.3 changes
+- Fixed issue when giving SEFD, not ignores that antenna may not be in status table
 version 4.2 changes
 - Explicit error if antenna or freq. is not known
 version 4.1 changes
@@ -71,6 +72,10 @@ def read_sefd_table(tablename='sefd_values.txt'):
 
 
 def read_sefd_values(table, antenna, band):
+    if args.sefd is not None:
+        # Then no need of getting the information from the table
+        return args.sefd
+
     if antenna not in table:
         print('ERROR: {} is not available.\n'.format(antenna))
         print('The available antennas are: {}'.format(' '.join(table.keys())))
