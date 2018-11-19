@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 """
 Swap polarizations for specified antennas and for a specific timerange.
 

@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python3
 """
 Change the MOUNT field in the ANTENNA table for Ys to 'ALT-AZ-NASMYTH-RH'.
 It allows tConvert to put MNTSTA=4 into the FITS AN table, to handle the

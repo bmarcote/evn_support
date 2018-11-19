@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 description = """
 Given an ANTAB file, it creates a new one with more Tsys values that are interpolated from the
 given ones. This will fill gaps when the time separation between Tsys measurements is too long

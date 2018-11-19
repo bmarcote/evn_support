@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 """Change the name of an project in a measurement set (MS).
 
 Usage: expname.py <msdata> <new_expname>

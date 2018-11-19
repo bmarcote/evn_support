@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python3
 """
 Flag visibilities with weights below the provided threshold.
 
@@ -75,14 +75,14 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
     indexes = np.where(weights < threshold)
     indexes2 = np.where((weights < threshold) & (weights > 0.0))
     print('Got {0:9} bad points'.format(indexes[0].size))
-    print('{0:04.3}% of the total visibilities to flag\n'.format(100.0*indexes[0].size/weights.size))
+    print('{0:04.3}% of the total visibilities to flag'.format(100.0*indexes[0].size/weights.size))
     print('{0:04.3}% of actual data (non-zero) to flag\n'.format(100.0*indexes2[0].size/weights.size))
     if verbose:
         weights[indexes] = -np.abs(weights[indexes])
         ms.putcol("WEIGHT", weights)
         print('Done.')
     else:
-        rint('Flag has not been applied.')
+        print('Flag has not been applied.')
 
     ms.close()
 

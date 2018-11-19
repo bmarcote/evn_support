@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#!/usr/bin/env python3
 """
 Given a VEX file, it creates a new VEX file that is a subset of the given one,
 dropping all the information (stations, source, PI names) that are not included

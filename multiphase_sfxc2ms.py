@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """Takes the default {exp}_sfxc2ms.sh file produced by the sfxc2ms.pl script and adds the _SRCname to the .cor files.
 
 Generates different {exp}_sfxc2ms_SRCname.sh files for the different phase centers (detailed in SRCname).

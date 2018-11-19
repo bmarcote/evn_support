@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Python port of Bob Campbell's IDL script to make nominal tsys tables.
 It takes the nominal SEFD values from the sefd_values.txt table and generates an ANTAB file using
