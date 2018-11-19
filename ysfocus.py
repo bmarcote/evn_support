@@ -88,7 +88,7 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
                 print('Changing {} mount from {} to {}'.format(a_station, getmount(a_station),
                                                                fixed_mounts[a_station]))
                 mounts[stations.index(a_station)] = fixed_mounts[a_station]
-        
+
         # In case no station has been found in the MS
         if len(stations_to_change) == 0:
             print("Neither Ys nor Ho found in the MS, exiting without action")
