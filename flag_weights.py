@@ -8,10 +8,13 @@ Options:
     threshold : float     Visibilities with a weight below the specified
                           value will be flagged. Must be positive.
 
-Version: 1.3
-Date: Apr 2018
+Version: 1.4
+Date: Nov 2018
 Written by Benito Marcote (marcote@jive.eu)
 
+version 1.4 changes
+- Now it also reports the percentage or data that were different from
+  zero and will be flagged (not only the total data as before).
 version 1.3 changes
 - Minor fixes (prog name in optparse info).
 version 1.2 changes
@@ -39,7 +42,7 @@ try:
     parser = argparse.ArgumentParser(description=description, prog='flag_weights.py', usage=usage)
     parser.add_argument('msdata', type=str, help=help_msdata)
     parser.add_argument('threshold', type=float, help=help_threshold)
-    parser.add_argument('--version', action='version', version='%(prog)s 1.3')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.4')
     parser.add_argument("-v", "--verbose", default=True, action="store_false" , help=help_v)
     arguments = parser.parse_args()
     #print('The arguments ', arguments)
