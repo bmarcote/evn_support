@@ -8,10 +8,16 @@ Options:
     threshold : float     Visibilities with a weight below the specified
                           value will be flagged. Must be positive.
 
-Version: 1.4
-Date: Nov 2018
+Version: 2.0
+Date: Mar 2019
 Written by Benito Marcote (marcote@jive.eu)
 
+version 2.0 changes
+- Major revision. Now it does not modify the weights anymore. Instead, it
+  flags those data with weights below the given threshold by modifying the
+  FLAG table.
+- Small change in print messages to show '100%' instead of '1e+02%' in certain
+  cases.
 version 1.4 changes
 - Now it also reports the percentage or data that were different from
   zero and will be flagged (not only the total data as before).
@@ -73,19 +79,42 @@ except ImportError:
 assert threshold > 0.0
 
 with pt.table(msdata, readonly=False, ack=False) as ms:
-    weights = ms.getcol("WEIGHT")
-    print('Got {0:9} weights'.format(weights.size))
-    indexes = np.where(weights < threshold)
-    indexes2 = np.where((weights < threshold) & (weights > 0.0))
-    print('Got {0:9} bad points'.format(indexes[0].size))
-    print('{0:04.3}% of the total visibilities to flag'.format(100.0*indexes[0].size/weights.size))
-    print('{0:04.3}% of actual data (non-zero) to flag\n'.format(100.0*indexes2[0].size/weights.size))
-    if verbose:
-        weights[indexes] = -np.abs(weights[indexes])
-        ms.putcol("WEIGHT", weights)
-        print('Done.')
+    flag_table = ms.getcol("FLAG")
+    if 'WEIGHT_SPECTRUM' in ms.colnames():
+        # WEIGHT_SPECTRUM has the same shape as FLAG: rows x channels x pol
+        w_spectrum = ms.getcol("WEIGHT_SPECTRUM")
+        assert flag_table.shape == w_spectrum.shape
+        indexes = np.where(ws_spectrum < threshold)
+        indexes2 = np.where((ws_spectrum < threshold) & (ws_spectrum > 0.0))
+        print('Got {0:9} bad points'.format(indexes[0].size))
+        print('{0:04.4}% of the total visibilities to flag'.format(100.0*indexes[0].size/w_spectrum.size))
+        print('{0:04.4}% of actual data (non-zero) to flag\n'.format(100.0*indexes2[0].size/w_spectrum.size))
+        if verbose:
+            flag_table[indexes] = True
+            ms.putcol("FLAG", flag_table)
+            print('Done.')
+        else:
+            print('Flags have not been applied.')
+
     else:
-        print('Flag has not been applied.')
+        # WEIGHT does NOT have the same shape as FLAG: rows x pol VERSUS rows x channels x pol
+        weights = ms.getcol("WEIGHT")
+        assert flag_table[:,1,:].shape == weights.shape
+        print('Got {0:9} weights'.format(weights.size))
+        indexes = np.where(weights < threshold)
+        indexes2 = np.where((weights < threshold) & (weights > 0.0))
+        print('Got {0:9} bad points'.format(indexes[0].size))
+        print('{0:04.4}% of the total visibilities to flag'.format(100.0*indexes[0].size/weights.size))
+        print('{0:04.4}% of actual data (non-zero) to flag\n'.format(100.0*indexes2[0].size/weights.size))
+        if verbose:
+            n_channels = flag_table.shape[1]
+            for a_chan in range(n_channels):
+                flag_table[:,a_chan,:][indexes] = True
+
+            ms.putcol("FLAG", flag_table)
+            print('Done.')
+        else:
+            print('Flags have not been applied.')
 
     ms.close()
 
