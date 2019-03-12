@@ -24,7 +24,7 @@ version 2.0 changes
 - documentation!!
 - Takes SEFD values from status table of EVN
 """
-
+import os
 import sys
 import argparse
 import datetime as dt
@@ -55,8 +55,8 @@ args = parser.parse_args()
 
 i_already_warn_about_seconds = False
 
-# def read_sefd_table(tablename='/jop83_0/pipe/in/marcote/scripts/sefd_values.txt'):
-def read_sefd_table(tablename='sefd_values.txt'):
+
+def read_sefd_table(tablename=os.path.dirname(__file__)+'/sefd_values.txt'):
     sefd_table = open(tablename, 'r')
     titles = sefd_table.readline().strip().split('|')
     titles = [t.strip() for t in titles]
