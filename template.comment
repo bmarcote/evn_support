@@ -1,0 +1,73 @@
+GENERAL
+{setup_header}<br>
+
+{sources_info}<br>
+{station_info}<br>
+
+The following are plots from the EVN pipeline analysis, in which the reference antena was: {ref_antenna}.
+///
+POSSM_AUTOCORR
+Auto-corr amplitude vs frequency plots for each station showing all IFs and Pols.
+///
+VPLOT_UNCAL
+Amplitude and phase vs time, for the whole experiment, no calibration applied. Shows visibilities on all baselines to the reference antenna. All IFs and Pols shown. This is a good place to look for stations that missed scans during the experiment.
+///
+POSSM_UNCAL
+Uncalibrated, vector averaged, cross power specra for baselines to the reference antenna. No bandpass calibration applied yet. This is a good place to look check how well detected sources are on each baseline.
+///
+POSSM_CPOL
+///
+TSYS
+Plots of system temperature vs time for each station (and each IF). Flat-line plots indicate that this information was not available for a given station, in which case we create a generic Tsys table scalled to the station's gain (Jy/K). This information is stored in the TY1 table.
+///
+GAIN
+Gain info in CL2, determined using Tsys tables. Plot shows Gain vs time for each station, each IF and each Pol. 
+///
+FRING_PHAS
+Plot of CL3. This is the CL table generated using CL2 (amplitude cal) and SN2 (FRING solutions). Plot shows phase calibration data vs time. Missing data indicate possible issues in those previous steps. If the data are complete (all stations and most scans present) then use this table to phase-reference the target. 
+///
+FRING_DELAY
+Plot of SN2. Shows delay vs time from FRING results (usually only calibrators and reference sources). This is a good place to look for times where FRING failed to get solutions. Here FRING uses a signal to noise cutoff of 7. If FRING fails a lot it would be a good idea to retry with a lower signal to noise cutoff. This is the line pass data. We expect better FRING solutions in the continuum data. 
+///
+FRING_RATE
+SN2 as above, but for rate. 
+///
+BANDPASS
+Plot of BP1. Shows the bandpass characteristic of each antenna, determined using the brightest source(s) in the experiment. Look for small dispersion in the phase data, this indicates a high signal to noise - which will lead to better bandpass characterisation. 
+///
+VPLOT_CAL
+Plot of visibilities vs time for all baselines to the reference antenna, after applying CL3. This is a good place to look for quickly checking the success of the antab (CL2) and FRING (CL3) stages of the pipeline.
+///
+POSSM_CAL
+Amplitude and phase vs frequency plots for all baselines to the reference antenna, after applying CL3 and BP1. If CL3 and BP1 are good you will get flat phase and amplitude profiles, therefore this is a good place to check the success of CL2 and particluarly BP1 for each scan/baseline/IF/Pol. 
+///
+IMAPN
+Only phase-referenced targets are shown.
+///
+IMAPU
+Only phase-referenced targets are shown.
+///
+CALIB_PHAS1
+Individual plots for each source that was used in FRING. Shows phase selfcal solutions (SN1 after SPLIT). This is particularly useful to check if the reference source could be self-calibrated, and to look for missing scans/antennas. These are more useful in the continuum pass data. 
+///
+CALIB_AMP2
+Individual plots for each source that was used in FRING. Shows amplitude selfcal solutions (SN2). This table is important to properly calibrate amplitudes from stations that had to use generic Tsys tables (see TSYS, above). In the statistical summary values close to one means a good a-priori calibration.
+///
+SENS
+Plot of CL4 which shows amplitude calibrations determined from CL3 and the amplitude selfcal solutions from SN2 (from CALIB_AMP2, above). Comparison with GAIN plot (above) reveals the accuracy of the apriori amplitude calibration derived from the TSYS tables - this is particularly important for stations that have generic generated TSYS tables; Tsys may benefit from aditional scalling if there is a large differnce in SENS and GAIN plots. 
+///
+CLPHS
+Closure phases for all triangles of antennas in the array. Individual plots for each source which was used in FRING. 
+///
+VPLOT_MODEL
+Similar to VPLOT_CAL for sources used in FRING, however each source has been individually SPLITed and modelled. 
+///
+UVCOV
+Plot of the UV coverage for each source during the experiment. 
+///
+UVPLT
+Plot of amplitude vs baseline lenght for each source. This can be useful to look for inications of structure at different angular scales. 
+///
+ICLN
+CLEANed image of each source (FRINGed or phase-referened) after applying all relevant calibration by the pipeline up to CL4; amplitude and phase selfcal calibrations. 
+///
