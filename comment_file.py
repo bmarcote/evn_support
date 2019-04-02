@@ -12,7 +12,7 @@ import os
 import sys
 import argparse
 import subprocess
-import datetime as dt
+from datetime import datetime as dt
 
 
 __version__ = 1.0
@@ -26,6 +26,7 @@ The script will ask you in the terminal about all the required inputs.
 
 parser = argparse.ArgumentParser(description=help_str, prog='comment_file.py')
 parser.add_argument('experiment', type=str, default=None, help='Experiment name. Note: in case of multiple passes write {exp}_number (e.g. ev100_1')
+parser.add_argument('-o', '--output', type=str, default=None, help='Output directory where the file {experiment}.comment will be saved (by default in /jop83_0/pipe/out/{experiment})')
 parser.add_argument('-v', '--version', action='version', version='%(prog)s {}'.format(__version__))
 
 
@@ -34,7 +35,7 @@ args = parser.parse_args()
 
 
 def get_sources():
-    """Parse the observed sources from the pipeline input file ($IN/{exp}/{exp}.inp.txt).
+    """Parse the observed sources from the pipeline input file (/jop83_0/pipe/in/{exp}/{exp}.inp.txt).
     It searches for the bandpass=, target= and phaseref= lines.
 
     Returns
@@ -48,7 +49,7 @@ def get_sources():
             The targets. Should have the same dimension than the phaseref (unless it is not a phase
             referencing experiment).
     """
-    with open('$IN/{}/{}.inp.txt'.format(args.experiment.lower().split('_')[0],
+    with open('/jop83_0/pipe/in/{}/{}.inp.txt'.format(args.experiment.lower().split('_')[0],
                                        args.experiment.lower()), 'r') as inpfile:
         phaseref = None
         target = None
@@ -65,8 +66,8 @@ def get_sources():
                 if target is None:
                     target = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
 
-            if target is None:
-                raise ValueError('No sources found for target (neither target or sources are defined in INP file')
+        if target is None:
+            raise ValueError('No sources found for target (neither target or sources are defined in INP file')
 
     return refant, bpass, phaseref, target
 
@@ -79,7 +80,7 @@ def parse_sources(bpass, phaseref, target):
         assert len(phaseref) == len(target)
         for a_phaseref, a_target in zip(phaseref, target):
             s += 'The target source {} was calibrated using the phase-reference source {}.<br>\n'.format(
-                                                                                      a_phaseref, a_target)
+                                                                                     a_target, a_phaseref)
     else:
         if len(target) > 1:
             s += 'The target sources {} were directly fringe-fitted and bandpass calibrated.<br>\n'.format(
@@ -98,7 +99,7 @@ def parse_sources(bpass, phaseref, target):
 
 def get_setup():
     """Get the observation setup from the {exp}.SCAN file created by the Pipeline:
-    It takes the file {exp}.SCAN that should be in $OUT/{exp}/.
+    It takes the file {exp}.SCAN that should be in /jop83_0/pipe/out/{exp}/.
 
     Returns
         - freq : float (GHz)
@@ -115,9 +116,12 @@ def get_setup():
             2 - dual pol.
             4 - ful pol.
     """
-    with open('$OUT/{}/{}.SCAN'.format(args.experiment.lower().split('_')[0],
+    with open('/jop83_0/pipe/out/{}/{}.SCAN'.format(args.experiment.lower().split('_')[0],
                                        args.experiment.lower()), 'r') as scanfile:
+        freq = None
+        lastline = None
         for scanline in scanfile.readlines():
+            lastline = scanline # It will be the last line at the end of the loop. DO NOT JUDGE ME!!!!
             # Getting the frequency and the number of polarizations
             # The line is like Freq = XXXX GHz  Ncor = X  No. vis = XXXX
             if 'Freq = ' in scanline:
@@ -137,15 +141,13 @@ def get_setup():
 
                 pols = int(temp[4]) # number of polarizations 2=  dual, 4 = full)
                 assert pols in (1, 2, 4)
-            else:
-                raise IOError('The SCAN file does not contain a line with Freq = XXX')
 
-            # # The line with the Frequency Table summary, listing all IFs,.
-            # if 'FQID IF#' in scanline:
-            #     pass
+        if freq is None:
+            raise IOError('The SCAN file does not contain a line with Freq = XXX')
+
 
         # The very last line (if not empty) is the last IF with Freq, BW, ch.Sep, and Sideband
-        last_if = scanfile.readlines()[-1].split()
+        last_if = lastline.split()
         if len(last_if) == 6:
             # It contains the FQID value
             number_ifs = int(last_if[1])
@@ -169,7 +171,7 @@ def parse_setup(exp, freq, datarate, number_ifs, bandwidth, pols):
     """Returns the text to place in the comment file concerning the experiment setup.
     """
     # It gets the date of the experiment from the MASTER_PROJECTS.LIS file in ccsbeta
-    date = subprocess.getoutput('ssh jops@ccsbeta grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper())
+    date = subprocess.getoutput('ssh jops@ccsbeta grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper()))
     obsdate = dt.strptime(date, '%Y%m%d')
     if freq < 0.6:
         band = 'P'
@@ -198,9 +200,9 @@ def parse_setup(exp, freq, datarate, number_ifs, bandwidth, pols):
 
 def get_antennas():
     """Returns a list of all antennas participating in the experiment. It takes the information
-    from the {exp}.DTSUM located in $OUT/{exp}/.
+    from the {exp}.DTSUM located in /jop83_0/pipe/out/{exp}/.
     """
-    with open('$OUT/{}/{}.DTSUM'.format(args.experiment.lower().split('_')[0],
+    with open('/jop83_0/pipe/out/{}/{}.DTSUM'.format(args.experiment.lower().split('_')[0],
                                        args.experiment.lower()), 'r') as dtsumfile:
         list_antennas = []
         inside_array = False
@@ -224,21 +226,24 @@ def get_antennas():
 def parse_antennas(list_antennas):
     """Returns the text to include in the comment file concerning the participating antennas
     """
+    list_antennas = [ant.capitalize() for ant in list_antennas]
     return '{} stations participated: {}.<br>\n'.format(len(list_antennas), ', '.join(list_antennas))
 
 
 with open(template_file, 'r') as template:
     full_text = template.read()
     refant, *all_sources = get_sources()
-    full_text.format(setup_header=parse_setup(args.experiment, *get_setup()),
+    full_text = full_text.format(setup_header=parse_setup(args.experiment, *get_setup()),
                      sources_info=parse_sources(*all_sources),
                      station_info=parse_antennas(get_antennas()),
                      ref_antenna=refant)
-    comment_file = open('$OUT/{}/{}.comment'.format(args.experiment.lower().split('_')[0],
-                                                    args.experiment.lower()), 'w')
+    if args.output is None:
+        outputdir = '/jop83_0/pipe/out/{}'.format(args.experiment.lower().split('_')[0])
+    else:
+        outputdir = args.output if args.output[-1] != '/' else args.output[:-1]
+    comment_file = open('{}/{}.comment'.format(outputdir, args.experiment.lower()), 'w')
     comment_file.write(full_text)
     comment_file.close()
+    print('\nFile {0}.comment created successfully in {1}/.'.format(args.experiment.lower(), outputdir))
 
-
-print('File {0}.comment created successfully in $OUT/{0}.'.format(args.experiment.lower()))
 
