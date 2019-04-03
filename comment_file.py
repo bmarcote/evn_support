@@ -4,9 +4,13 @@ Creates a .comment file for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 The script will ask you in the terminal about all the required inputs.
 
-Version: 1.0
+Version: 1.1
 Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
+
+version 1.1 changes
+- Now it takes the cutoff value info from the input file.
+- Recognises if it is an expected cont/line experiment and change several lines on that.
 """
 import os
 import sys
@@ -15,7 +19,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 1.0
+__version__ = 1.1
 # The .comment file template is located in the same directory as this script. Or it should be.
 template_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
 
@@ -34,13 +38,15 @@ args = parser.parse_args()
 
 
 
-def get_sources():
+def get_input_file_info():
     """Parse the observed sources from the pipeline input file (/jop83_0/pipe/in/{exp}/{exp}.inp.txt).
     It searches for the bandpass=, target= and phaseref= lines.
 
     Returns
         - refant : str
             The reference antenna
+        - cutoff : int
+            The SNR cutoff used in FRING.
         - bpass : list
             The bandpass calibrators and fringe finders used in the pipeline.
         - phaseref : list
@@ -52,24 +58,27 @@ def get_sources():
     with open('/jop83_0/pipe/in/{}/{}.inp.txt'.format(args.experiment.lower().split('_')[0],
                                        args.experiment.lower()), 'r') as inpfile:
         phaseref = None
+        cutoff = 7
         target = None
         for inpline in inpfile.readlines():
             if 'refant' in inpline:
                 refant = inpline.split('=')[1].strip().split(',')[0]
+            if ('fring_snr' in inpline) and inpline[0].strip() != '#':
+                cutoff = int(inpline.split('=')[1].strip())
             if 'bpass' in inpline:
                 bpass = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
-            if ('phaseref' in inpline) and inpline[0] != '#':
+            if ('phaseref' in inpline) and inpline[0].strip() != '#':
                 phaseref = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
-            if ('target' in inpline) and inpline[0] != '#':
+            if ('target' in inpline) and inpline[0].strip() != '#':
                 target = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
-            if ('sources' in inpline) and inpline[0] != '#':
+            if ('sources' in inpline) and inpline[0].strip() != '#':
                 if target is None:
                     target = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
 
         if target is None:
             raise ValueError('No sources found for target (neither target or sources are defined in INP file')
 
-    return refant, bpass, phaseref, target
+    return refant, cutoff, bpass, phaseref, target
 
 
 def parse_sources(bpass, phaseref, target):
@@ -167,8 +176,26 @@ def get_setup():
     return freq, datarate, number_ifs, bandwidth, pols
 
 
-def parse_setup(exp, freq, datarate, number_ifs, bandwidth, pols):
+def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
     """Returns the text to place in the comment file concerning the experiment setup.
+    Inputs
+        - exp : str
+            Experiment name (e.g. n18l2 or EB032).
+        - type_exp : str
+            To options allowed: 'cont' or 'line', for continuum or spectral line passes, resp.
+        - freq : float (GHz)
+            The central frequency of the observation.
+        - datarate : float (Mbps)
+            The datarate of the observation.
+        - number_ifs : int
+            Number of IFs or subbands.
+        - bandwidth : float (MHz)
+            The bandwidth of each IF or subband.
+        - pols : int
+            Number of polarizations:
+            1 - single pol.
+            2 - dual pol.
+            4 - ful pol.
     """
     # It gets the date of the experiment from the MASTER_PROJECTS.LIS file in ccsbeta
     date = subprocess.getoutput('ssh jops@ccsbeta grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper()))
@@ -191,8 +218,9 @@ def parse_setup(exp, freq, datarate, number_ifs, bandwidth, pols):
         band = 'Q'
 
     name_pols = {1: 'single', 2: 'dual', 4: 'full'}
-    s = '{}. {}-band experiment observed on {}.<br>\n'.format(exp.upper(), band, obsdate.strftime('%d %B %Y'))
-    s += 'Data rate was {} Mbps ({} x {} MHz subbands, {} polarization, two-bit sampling)<br>\n'.format(
+    s = '{}. {}-band experiment observed on {}.\n'.format(exp.upper(), band, obsdate.strftime('%d %B %Y'))
+    s += 'This is the {} pass data.<br>\n'.format('continuum' if type_exp == 'cont' else 'spectral line')
+    s += 'The data rate was {} Mbps ({} x {} MHz subbands, {} polarization, two-bit sampling)<br>\n'.format(
             datarate, number_ifs, bandwidth, name_pols[pols])
 
     return s
@@ -230,13 +258,26 @@ def parse_antennas(list_antennas):
     return '{} stations participated: {}.<br>\n'.format(len(list_antennas), ', '.join(list_antennas))
 
 
+def parse_line_info(type_exp):
+    """Places a sentence in the comment file (in different locations) when it is a spectral line pass
+    to warn that the solutions are expected to be better for continuum passes.
+    """
+    if type_exp == 'cont':
+        return ''
+    elif type_exp == 'line':
+        return 'This is the spectral line pass data. Better solutions are expected in the continuum data.'
+    else:
+        raise ValueError('Only "cont" or "line" are values expected for type_exp.')
+
+
 with open(template_file, 'r') as template:
+    type_experiment = 'line' if args.experiment[-2:] == '_2' else 'cont'
     full_text = template.read()
-    refant, *all_sources = get_sources()
-    full_text = full_text.format(setup_header=parse_setup(args.experiment, *get_setup()),
+    refant, fringe_cutoff, *all_sources = get_input_file_info()
+    full_text = full_text.format(setup_header=parse_setup(args.experiment, type_experiment, *get_setup()),
                      sources_info=parse_sources(*all_sources),
-                     station_info=parse_antennas(get_antennas()),
-                     ref_antenna=refant)
+                     station_info=parse_antennas(get_antennas()), fringe_cutoff=fringe_cutoff,
+                     ref_antenna=refant, type_info=parse_line_info(type_experiment))
     if args.output is None:
         outputdir = '/jop83_0/pipe/out/{}'.format(args.experiment.lower().split('_')[0])
     else:
