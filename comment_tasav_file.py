@@ -32,7 +32,7 @@ The script takes the information from different locations (ccsbeta, pipe $IN and
 The EVN Pipeline must have been run before calling this script.
 """
 
-parser = argparse.ArgumentParser(description=help_str, prog='comment_file.py')
+parser = argparse.ArgumentParser(description=help_str, prog='comment_tasav_file.py')
 parser.add_argument('-v', '--version', action='version', version='%(prog)s {}'.format(__version__))
 parser.add_argument('-oc', '--output_comment', type=str, default=None, help='Output directory where the file {experiment}.comment will be saved (by default in $OUT/{experiment})')
 parser.add_argument('-ot', '--output_tasav', type=str, default=None, help='Output directory where the file {experiment}.tasav.txt will be saved (by default in $IN/{experiment})')
