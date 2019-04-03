@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Creates a .comment file for the EVN Pipeline.
+Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
-The script will ask you in the terminal about all the required inputs.
 
-Version: 1.1
+Version: 2.0
 Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.0 changes
+- Also creates the {exp}.tasav.txt file in the $IN/{exp} directory.
 version 1.1 changes
 - Now it takes the cutoff value info from the input file.
 - Recognises if it is an expected cont/line experiment and change several lines on that.
@@ -19,19 +20,23 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 1.1
+__version__ = 2.0
 # The .comment file template is located in the same directory as this script. Or it should be.
-template_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
+template_comment_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
+template_tasav_file = os.path.dirname(os.path.abspath(__file__)) + '/template.tasav.txt'
 
-help_str = """Creates a .comment file for the EVN Pipeline.
-Given a default template, customizes it to include the basic data from the given experiment.
-The script will ask you in the terminal about all the required inputs.
+help_str = """Creates a .comment file (in $OUT/exp directory) and a .tasav.txt file (in $IN/exp).
+
+Given the default templates, it customizes them to include the basic data from the given experiment.
+The script takes the information from different locations (ccsbeta, pipe $IN and $OUT directories).
+The EVN Pipeline must have been run before calling this script.
 """
 
 parser = argparse.ArgumentParser(description=help_str, prog='comment_file.py')
-parser.add_argument('experiment', type=str, default=None, help='Experiment name. Note: in case of multiple passes write {exp}_number (e.g. ev100_1')
-parser.add_argument('-o', '--output', type=str, default=None, help='Output directory where the file {experiment}.comment will be saved (by default in /jop83_0/pipe/out/{experiment})')
 parser.add_argument('-v', '--version', action='version', version='%(prog)s {}'.format(__version__))
+parser.add_argument('-oc', '--output_comment', type=str, default=None, help='Output directory where the file {experiment}.comment will be saved (by default in $OUT/{experiment})')
+parser.add_argument('-ot', '--output_tasav', type=str, default=None, help='Output directory where the file {experiment}.tasav.txt will be saved (by default in $IN/{experiment})')
+parser.add_argument('experiment', type=str, default=None, help='Experiment name. Note: in case of multiple passes write {exp}_number (e.g. ev100_1')
 
 
 args = parser.parse_args()
@@ -270,7 +275,25 @@ def parse_line_info(type_exp):
         raise ValueError('Only "cont" or "line" are values expected for type_exp.')
 
 
-with open(template_file, 'r') as template:
+def parse_sources_list(sources, max_item_first_raw=3):
+    """Converts the list of elements to a comma-separated string list.
+    The max number of items for the first raw can also be defined.
+    """
+    s = ''
+    if len(sources) > max_item_first_raw:
+        s += ', '.join(sources[:max_item_first_raw])
+        sources = sources[max_item_first_raw:]
+        s += ',\n        '
+        while len(sources) > 6:
+            s += ', '.join(sources[:6])
+            s += ',\n        '
+            sources = sources[6:]
+
+    s += ', '.join(sources)
+    return s
+        
+
+with open(template_comment_file, 'r') as template:
     type_experiment = 'line' if args.experiment[-2:] == '_2' else 'cont'
     full_text = template.read()
     refant, fringe_cutoff, *all_sources = get_input_file_info()
@@ -278,13 +301,32 @@ with open(template_file, 'r') as template:
                      sources_info=parse_sources(*all_sources),
                      station_info=parse_antennas(get_antennas()), fringe_cutoff=fringe_cutoff,
                      ref_antenna=refant, type_info=parse_line_info(type_experiment))
-    if args.output is None:
+    if args.output_comment is None:
         outputdir = '/jop83_0/pipe/out/{}'.format(args.experiment.lower().split('_')[0])
     else:
-        outputdir = args.output if args.output[-1] != '/' else args.output[:-1]
+        outputdir = args.output_comment if args.output_comment[-1] != '/' else args.output_comment[:-1]
+
     comment_file = open('{}/{}.comment'.format(outputdir, args.experiment.lower()), 'w')
     comment_file.write(full_text)
     comment_file.close()
     print('\nFile {0}.comment created successfully in {1}/.'.format(args.experiment.lower(), outputdir))
+
+
+with open(template_tasav_file, 'r') as template:
+    full_text = template.read()
+    refant, fringe_cutoff, bp_sources, pcal_sources, target_sources = get_input_file_info()
+    full_text = full_text.format(expname=args.experiment.upper(), 
+                                fringe_sources=parse_sources_list(list(set(bp_sources + pcal_sources)), 3),
+                                bandpass_sources=parse_sources_list(bp_sources, 4))
+    if args.output_tasav is None:
+        outputdir = '/jop83_0/pipe/in/{}'.format(args.experiment.lower().split('_')[0])
+    else:
+        outputdir = args.output_tasav if args.output_tasav[-1] != '/' else args.output_tasav[:-1]
+
+    comment_file = open('{}/{}.tasav.txt'.format(outputdir, args.experiment.lower()), 'w')
+    comment_file.write(full_text)
+    comment_file.close()
+    print('File {0}.tasav.txt created successfully in {1}/.'.format(args.experiment.lower(), outputdir))
+
 
 
