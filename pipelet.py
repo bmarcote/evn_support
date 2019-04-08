@@ -83,6 +83,6 @@ with open(template_pipelet_file, 'r') as template:
                                                args.experiment.lower()), 'w')
     pipelet_file.write(full_text)
     pipelet_file.close()
-    print('\nFile {0}.pipelet created successfully in {1}.'.format(args.experiment.lower(), args.output))
+    print('\nFile {0}.pipelet created successfully in {1}/.'.format(args.experiment.lower(), args.output if args.output[-1] != '/' else args.output[:-1]))
 
 
