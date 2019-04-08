@@ -54,6 +54,7 @@ def get_credentials_from_filename(thefile):
 
     Returns the username, and password.
     """
+    thefile = thefile.split('/')[-1]
     assert thefile.count('_') == 1
     return thefile.split('.')[0].split('_')
 
