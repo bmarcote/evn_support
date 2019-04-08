@@ -1,0 +1,43 @@
+Subject:  Dear PI:  Pipeline Analysis of {expname}
+{delimiter}
+
+Dear PI,
+
+We have automatically pipelined your EVN/Global VLBI experiment: {expname}.
+
+The credentials for accessing the data are:
+
+username: {username}
+password: {password}
+
+Please visit our web pages:
+    www.jive.eu/select-experiment
+    www.jive.eu/browse-catalogue
+which provide different indexing schemes to find you experiment,
+in order to download:
+
+(i) Sets of antab/flagging files used by the pipeline and resulting
+    calibration tables (in FITS format).  These can be downloaded and
+    directly applied to the data on the EVN archive.
+
+(ii) A series of plots produced by the pipeline (pdf format), which should
+     be useful in assessing the antenna performance and data quality.
+
+(iii) A history file associated with the data processed by the pipeline
+      and a summary of what the CL/SN tables contain (text format both).
+
+Note: The pipeline uses AIPS versions 31DEC13. The latest version
+    of the pipeline script is written in Python and uses ParselTongue
+    to access the AIPS tasks. Visit the web page above for more details.
+    The pipeline is under continual development and any feedback is
+    appreciated.  Background information to the pipeline can be found at
+        www.evlbi.org/pipeline/user_expts.html
+
+If you have any feedback regarding this service please direct your comments to:
+Zsolt Paragi (zparagi@jive.eu).
+
+
+Clear skies,
+
+{supsci}.
+

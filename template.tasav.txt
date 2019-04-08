@@ -1,0 +1,13 @@
+########### List of extension tables of the experiment {expname} ##############
+AN1 = AN table 
+CL1 = CL table created when loading data 
+SN1 = Output of running APCAL on TY and GC tables
+CL2 = The a priori amplitude calibration (CL1 * SN1) and the parallactic angle
+        correction.
+FG1 = Flagging band edges and data acquired when the telescope was off-source
+        (as determined by telescope monitor data).
+SN2 = The phase, delay and phase rate solutions derived from sources
+        identified as calibrators via FRING: {fringe_sources}
+CL3 = CL2 * SN2 (the application of SN2 to CL2)
+BP1 = Bandpass amplitude and phase (the application of CL2 and FG1)
+      Bandpass Calibrators: {bandpass_sources}
