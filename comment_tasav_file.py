@@ -203,7 +203,7 @@ def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
             4 - ful pol.
     """
     # It gets the date of the experiment from the MASTER_PROJECTS.LIS file in ccsbeta
-    date = subprocess.getoutput('ssh jops@ccsbeta grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper()))
+    date = subprocess.getoutput('ssh jops@ccs grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper()))
     obsdate = dt.strptime(date, '%Y%m%d')
     if freq < 0.6:
         band = 'P'
