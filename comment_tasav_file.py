@@ -3,10 +3,12 @@
 Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 
-Version: 2.0
+Version: 2.1
 Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.1 changes
+- Fix issue reading MASTER_PROJECTS.LIS.
 version 2.0 changes
 - Also creates the {exp}.tasav.txt file in the $IN/{exp} directory.
 version 1.1 changes
@@ -204,6 +206,8 @@ def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
     """
     # It gets the date of the experiment from the MASTER_PROJECTS.LIS file in ccsbeta
     date = subprocess.getoutput('ssh jops@ccs grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper()))
+    if date == '':
+        date = subprocess.getoutput('ssh jops@ccs grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4'.format(exp.upper()))
     obsdate = dt.strptime(date, '%Y%m%d')
     if freq < 0.6:
         band = 'P'
