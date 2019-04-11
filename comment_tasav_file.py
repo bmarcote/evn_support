@@ -3,10 +3,12 @@
 Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 
-Version: 2.1
+Version: 2.2
 Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.2 changes
+- Bug fix when phaseref/target are None.
 version 2.1 changes
 - Fix issue reading MASTER_PROJECTS.LIS.
 version 2.0 changes
@@ -22,7 +24,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 2.0
+__version__ = 2.2
 # The .comment file template is located in the same directory as this script. Or it should be.
 template_comment_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
 template_tasav_file = os.path.dirname(os.path.abspath(__file__)) + '/template.tasav.txt'
@@ -295,7 +297,7 @@ def parse_sources_list(sources, max_item_first_raw=3):
 
     s += ', '.join(sources)
     return s
-        
+
 
 with open(template_comment_file, 'r') as template:
     type_experiment = 'line' if args.experiment[-2:] == '_2' else 'cont'
@@ -319,7 +321,12 @@ with open(template_comment_file, 'r') as template:
 with open(template_tasav_file, 'r') as template:
     full_text = template.read()
     refant, fringe_cutoff, bp_sources, pcal_sources, target_sources = get_input_file_info()
-    full_text = full_text.format(expname=args.experiment.upper(), 
+    if pcal_sources is None:
+        full_text = full_text.format(expname=args.experiment.upper(),
+                                fringe_sources=parse_sources_list(bp_sources, 3),
+                                bandpass_sources=parse_sources_list(bp_sources, 4))
+    else:
+        full_text = full_text.format(expname=args.experiment.upper(),
                                 fringe_sources=parse_sources_list(list(set(bp_sources + pcal_sources)), 3),
                                 bandpass_sources=parse_sources_list(bp_sources, 4))
     if args.output_tasav is None:
