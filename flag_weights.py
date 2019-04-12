@@ -78,8 +78,29 @@ except ImportError:
 
 assert threshold > 0.0
 
+def chunkert(f, l, cs, verbose=True):
+    while f<l:
+        n = min(cs, l-f)
+        yield (f, n)
+        f = f + n
+    raise StopIteration
+
 with pt.table(msdata, readonly=False, ack=False) as ms:
-    flag_table = ms.getcol("FLAG")
+    # WEIGHT: (nrow, npol)
+    # WEIGHT_SPECTRUM: (nrow, npol, nfreq)
+    # flags[weight < threshold] = True
+    weightcol = 'WEIGHT_SPECTRUM' if 'WEIGHT_SPECTRUM' in ms.colnames() else 'WEIGHT'
+    transpose = (lambda x:x) if weightcol == 'WEIGHT_SPECTRUM' else (lambda x: x.transpose((2, 0, 1)))
+    for (start, nrow) in chunkert(0, len(ms), 5000):
+        # shape: (nrow, npol, nfreq)
+        flags   = transpose(ms.getcol("FLAG", startrow=start, nrow=nrow))
+        weights = ms.getcol(weightcol, startrow=start, nrow=nrow)
+        
+        
+
+
+
+
     if 'WEIGHT_SPECTRUM' in ms.colnames():
         # WEIGHT_SPECTRUM has the same shape as FLAG: rows x channels x pol
         w_spectrum = ms.getcol("WEIGHT_SPECTRUM")
