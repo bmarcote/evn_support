@@ -8,7 +8,7 @@ Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
 
 version 2.3 changes
-- Bug fix reading refant.
+- Bug fix reading refant and bandpass.
 version 2.2 changes
 - Bug fix when phaseref/target are None.
 version 2.1 changes
@@ -76,7 +76,7 @@ def get_input_file_info():
                 refant = inpline.split('=')[1].strip().split(',')[0]
             if ('fring_snr' in inpline) and inpline[0].strip() != '#':
                 cutoff = int(inpline.split('=')[1].strip())
-            if 'bpass' in inpline:
+            if 'bpass' in inpline and inpline[0].strip() != '#':
                 bpass = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
             if ('phaseref' in inpline) and inpline[0].strip() != '#':
                 phaseref = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
