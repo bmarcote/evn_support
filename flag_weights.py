@@ -8,10 +8,12 @@ Options:
     threshold : float     Visibilities with a weight below the specified
                           value will be flagged. Must be positive.
 
-Version: 2.0
-Date: Mar 2019
+Version: 3.0
+Date: Apr 2019
 Written by Benito Marcote (marcote@jive.eu)
 
+version 3.0 changes
+- Refactoring code (thanks to Harro).
 version 2.0 changes
 - Major revision. Now it does not modify the weights anymore. Instead, it
   flags those data with weights below the given threshold by modifying the
@@ -35,7 +37,7 @@ from pyrap import tables as pt
 import numpy as np
 import sys
 
-
+__version__ = 3.0
 help_msdata = 'Measurement set containing the data to be corrected.'
 help_threshold = 'Visibilities with a weight below this value will be flagged. Must be positive.'
 help_v = 'Only checks the visibilities to flag (do not flag the data).'
@@ -48,7 +50,7 @@ try:
     parser = argparse.ArgumentParser(description=description, prog='flag_weights.py', usage=usage)
     parser.add_argument('msdata', type=str, help=help_msdata)
     parser.add_argument('threshold', type=float, help=help_threshold)
-    parser.add_argument('--version', action='version', version='%(prog)s 1.4')
+    parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
     parser.add_argument("-v", "--verbose", default=True, action="store_false" , help=help_v)
     arguments = parser.parse_args()
     #print('The arguments ', arguments)
@@ -84,11 +86,14 @@ def chunkert(f, l, cs, verbose=True):
         yield (f, n)
         f = f + n
 
+
 percent = lambda x, y: (float(x)/float(y)) * 100.0
+
 
 with pt.table(msdata, readonly=False, ack=False) as ms:
     total_number = 0
-    flagged_before, flagged_after, flagged_nonzero = (0, 0, 0)
+    flagged_before, flagged_after = (0, 0)
+    flagged_nonzero, flagged_nonzero_before, flagged_nonzero_after = (0, 0, 0)
     # WEIGHT: (nrow, npol)
     # WEIGHT_SPECTRUM: (nrow, npol, nfreq)
     # flags[weight < threshold] = True
@@ -97,61 +102,31 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
     for (start, nrow) in chunkert(0, len(ms), 5000):
         # shape: (nrow, npol, nfreq)
         flags = transpose(ms.getcol("FLAG", startrow=start, nrow=nrow))
-        total_number += np.product( flags.shape )
+        total_number += np.product(flags.shape)
         # count how much data is already flagged
         flagged_before += np.sum(flags)
         # extract weights and compute new flags based on threshold
         weights = ms.getcol(weightcol, startrow=start, nrow=nrow)
         # how many non-zero did we flag
-        this_flagged_nonzero = np.logical_and(flags, weights>0)
+        flagged_nonzero_before = np.logical_and(flags, weights > 0)
         # join with existing flags and count again
         flags = np.logical_or(flags, weights < threshold)
         flagged_after += np.sum(flags)
-        that_flagged_nonzero = np.logical_and(flags, weights>0)
-        flagged_nonzero += np.sum(np.logical_xor(this_flagged_nonzero, that_flagged_nonzero))
+        flagged_nonzero_after = np.logical_and(flags, weights > 0)
+        flagged_nonzero += np.sum(np.logical_xor(flagged_nonzero_before, flagged_nonzero_after))
         # one thing left to do: write the updated flags to disk
         #flags = ms.putcol("FLAG", flags.transpose((1, 0 , 2)), startrow=start, nrow=nrow)
-        flags = ms.putcol("FLAG", transpose(flags), startrow=start, nrow=nrow)
-    print("Using threshold {0:.2f} flagged {1:.2f}%".format(threshold, percent(flagged_after-flagged_before,total_number)))
-    print("                {0:.2f}% non-zero flagged".format(percent(flagged_nonzero,total_number)) )
-    print("                {0:.2f}% total flagged".format(percent(flagged_after,total_number)) )
+        if verbose:
+            flags = ms.putcol("FLAG", transpose(flags), startrow=start, nrow=nrow)
 
-#    if 'WEIGHT_SPECTRUM' in ms.colnames():
-#        # WEIGHT_SPECTRUM has the same shape as FLAG: rows x channels x pol
-#        w_spectrum = ms.getcol("WEIGHT_SPECTRUM")
-#        assert flag_table.shape == w_spectrum.shape
-#        indexes = np.where(ws_spectrum < threshold)
-#        indexes2 = np.where((ws_spectrum < threshold) & (ws_spectrum > 0.0))
-#        print('Got {0:9} bad points'.format(indexes[0].size))
-#        print('{0:04.4}% of the total visibilities to flag'.format(100.0*indexes[0].size/w_spectrum.size))
-#        print('{0:04.4}% of actual data (non-zero) to flag\n'.format(100.0*indexes2[0].size/w_spectrum.size))
-#        if verbose:
-#            flag_table[indexes] = True
-#            ms.putcol("FLAG", flag_table)
-#            print('Done.')
-#        else:
-#            print('Flags have not been applied.')
-#
-#    else:
-#        # WEIGHT does NOT have the same shape as FLAG: rows x pol VERSUS rows x channels x pol
-#        weights = ms.getcol("WEIGHT")
-#        assert flag_table[:,1,:].shape == weights.shape
-#        print('Got {0:9} weights'.format(weights.size))
-#        indexes = np.where(weights < threshold)
-#        indexes2 = np.where((weights < threshold) & (weights > 0.0))
-#        print('Got {0:9} bad points'.format(indexes[0].size))
-#        print('{0:04.4}% of the total visibilities to flag'.format(100.0*indexes[0].size/weights.size))
-#        print('{0:04.4}% of actual data (non-zero) to flag\n'.format(100.0*indexes2[0].size/weights.size))
-#        if verbose:
-#            n_channels = flag_table.shape[1]
-#            for a_chan in range(n_channels):
-#                flag_table[:,a_chan,:][indexes] = True
-#
-#            ms.putcol("FLAG", flag_table)
-#            print('Done.')
-#        else:
-#            print('Flags have not been applied.')
-
+    print("Got {0:11} visibilities".format(total_number))
+    print("Got {0:11} visibilities to flag using threshold {1}\n".format(flagged_after-flagged_before,
+                                                                                  threshold))
+    print("{0:.2f}% total vis. flagged ({2:.2f}% to flag in this execution).\n{1:.2f}% data with non-zero weights flagged.\n".format(percent(flagged_after, total_number), percent(np.sum(flagged_nonzero_after), total_number), percent(flagged_after-flagged_before, total_number)))
     ms.close()
 
+if verbose:
+    print('Done.')
+else:
+    print('Flags have not been applied.')
 
