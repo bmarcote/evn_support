@@ -113,7 +113,9 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         flags = np.logical_or(flags, weights < threshold)
         flagged_after += np.sum(flags)
         flagged_nonzero_after = np.logical_and(flags, weights > 0)
-        flagged_nonzero += np.sum(np.logical_xor(flagged_nonzero_before, flagged_nonzero_after))
+        # Saving the total of nonzero flags (in this and previous runs)
+        # flagged_nonzero += np.sum(np.logical_xor(flagged_nonzero_before, flagged_nonzero_after))
+        flagged_nonzero += np.sum(flagged_nonzero_after)
         # one thing left to do: write the updated flags to disk
         #flags = ms.putcol("FLAG", flags.transpose((1, 0 , 2)), startrow=start, nrow=nrow)
         if verbose:
@@ -122,7 +124,7 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
     print("Got {0:11} visibilities".format(total_number))
     print("Got {0:11} visibilities to flag using threshold {1}\n".format(flagged_after-flagged_before,
                                                                                   threshold))
-    print("{0:.2f}% total vis. flagged ({2:.2f}% to flag in this execution).\n{1:.2f}% data with non-zero weights flagged.\n".format(percent(flagged_after, total_number), percent(np.sum(flagged_nonzero_after), total_number), percent(flagged_after-flagged_before, total_number)))
+    print("{0:.2f}% total vis. flagged ({2:.2f}% to flag in this execution).\n{1:.2f}% data with non-zero weights flagged.\n".format(percent(flagged_after, total_number), percent(flagged_nonzero, total_number), percent(flagged_after-flagged_before, total_number)))
     ms.close()
 
 if verbose:
