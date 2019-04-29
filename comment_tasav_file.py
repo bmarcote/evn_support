@@ -111,6 +111,9 @@ def parse_sources(bpass, phaseref, target):
         else:
             s += 'The target source {} was directly fringe-fitted and bandpass calibrated.<br>\n'.format(target[0])
 
+        if target == bpass:
+            return s
+
     if len(bpass) == 1:
         keys = ('was', '')
     else:
