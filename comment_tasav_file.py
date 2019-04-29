@@ -3,10 +3,12 @@
 Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 
-Version: 2.3
+Version: 2.4
 Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.4 changes
+- Bug fix when neither target, phaseref, and sources are specified.
 version 2.3 changes
 - Bug fix reading refant and bandpass.
 version 2.2 changes
@@ -26,7 +28,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 2.3
+__version__ = 2.4
 # The .comment file template is located in the same directory as this script. Or it should be.
 template_comment_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
 template_tasav_file = os.path.dirname(os.path.abspath(__file__)) + '/template.tasav.txt'
@@ -87,7 +89,8 @@ def get_input_file_info():
                     target = [i.strip() for i in inpline.split('=')[1].strip().split(',')]
 
         if target is None:
-            raise ValueError('No sources found for target (neither target or sources are defined in INP file')
+            # No phase referencing experiment and no additional sources specified apart of bpass
+            target = bpass
 
     return refant, cutoff, bpass, phaseref, target
 
