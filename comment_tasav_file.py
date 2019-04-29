@@ -3,10 +3,12 @@
 Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 
-Version: 2.4
+Version: 2.5
 Date: April 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.5 changes
+- String improvement: now uses 'and' and the end of a list.
 version 2.4 changes
 - Bug fix when neither target, phaseref, and sources are specified.
 version 2.3 changes
@@ -28,7 +30,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 2.4
+__version__ = 2.5
 # The .comment file template is located in the same directory as this script. Or it should be.
 template_comment_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
 template_tasav_file = os.path.dirname(os.path.abspath(__file__)) + '/template.tasav.txt'
@@ -105,10 +107,14 @@ def parse_sources(bpass, phaseref, target):
             s += 'The target source {} was calibrated using the phase-reference source {}.<br>\n'.format(
                                                                                      a_target, a_phaseref)
     else:
-        if len(target) > 1:
+        if len(target) > 2:
             s += 'The target sources {} were directly fringe-fitted and bandpass calibrated.<br>\n'.format(
-                                                                                        ', '.join(target))
-        else:
+                                                  ', '.join(target)[::-1].replace(' ,', ' dna ,', 1)[::-1])
+        elif len(target) == 2:
+            s += 'The target sources {} were directly fringe-fitted and bandpass calibrated.<br>\n'.format(
+                                                                                      ' and '.join(target))
+        else: # It must be only one target source
+            assert len(target) == 1
             s += 'The target source {} was directly fringe-fitted and bandpass calibrated.<br>\n'.format(target[0])
 
         if target == bpass:
@@ -119,7 +125,14 @@ def parse_sources(bpass, phaseref, target):
     else:
         keys = ('were', 's')
 
-    s += '{0} {1} also observed as calibrator{2} and fringe finder{2}.<br>\n'.format(', '.join(bpass), *keys)
+    if len(bpass) > 2:
+        s += '{0} were also observed as calibrators and fringe finders.<br>\n'.format(
+                              ', '.join(bpass)[::-1].replace(' ,', ' dna ,', 1)[::-1])
+    elif len(bpass) == 2:
+        s += '{0} were also observed as calibrators and fringe finders.<br>\n'.format(' and '.join(bpass))
+    else:
+        assert len(bpass) == 1
+        s += '{0} was also observed as calibrator and fringe finder.<br>\n'.format(bpass[0])
     return s
 
 
