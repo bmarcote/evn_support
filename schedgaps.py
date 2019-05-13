@@ -61,7 +61,7 @@ for i,scope in enumerate(telescopes):
   #print(earlyTimes[0][0] + '/' + (earlyTimes[0][1]))
   lastGap = (earlyTimes[0][0] + '/' + earlyTimes[0][1])
   foundGap = False
-  continuousCal = ('O8', 'Ys', 'Ef', 'Ro', 'Jb')
+  continuousCal = ('O8', 'Ys', 'Ef', 'Ro', 'Jb', 'Tr')
   contStationText = ''
   if scope in continuousCal:
     contStationText = '*'
