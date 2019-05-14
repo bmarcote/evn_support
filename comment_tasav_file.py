@@ -3,10 +3,12 @@
 Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 
-Version: 2.5
-Date: April 2019
+Version: 2.6
+Date: May 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.6 changes
+- Bug fix searching for EXP with _N in MASTER_PROJECTS.LIS
 version 2.5 changes
 - String improvement: now uses 'and' and the end of a list.
 version 2.4 changes
@@ -30,7 +32,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 2.5
+__version__ = 2.6
 # The .comment file template is located in the same directory as this script. Or it should be.
 template_comment_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
 template_tasav_file = os.path.dirname(os.path.abspath(__file__)) + '/template.tasav.txt'
@@ -108,14 +110,14 @@ def parse_sources(bpass, phaseref, target):
                                                                                      a_target, a_phaseref)
     else:
         if len(target) > 2:
-            s += 'The target sources {} were directly fringe-fitted and bandpass calibrated.<br>\n'.format(
-                                                  ', '.join(target)[::-1].replace(' ,', ' dna ,', 1)[::-1])
+            s += 'The target sources {} were directly fringe-fitted.<br>\n'.format(
+                          ', '.join(target)[::-1].replace(' ,', ' dna ,', 1)[::-1])
         elif len(target) == 2:
-            s += 'The target sources {} were directly fringe-fitted and bandpass calibrated.<br>\n'.format(
-                                                                                      ' and '.join(target))
+            s += 'The target sources {} were directly fringe-fitted.<br>\n'.format(
+                                                              ' and '.join(target))
         else: # It must be only one target source
             assert len(target) == 1
-            s += 'The target source {} was directly fringe-fitted and bandpass calibrated.<br>\n'.format(target[0])
+            s += 'The target source {} was directly fringe-fitted.<br>\n'.format(target[0])
 
         if target == bpass:
             return s
@@ -210,7 +212,7 @@ def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
     """Returns the text to place in the comment file concerning the experiment setup.
     Inputs
         - exp : str
-            Experiment name (e.g. n18l2 or EB032).
+            Experiment name (e.g. n18l2 or EB032). In case of _1, _2, it should have been removed beforehand.
         - type_exp : str
             To options allowed: 'cont' or 'line', for continuum or spectral line passes, resp.
         - freq : float (GHz)
@@ -324,7 +326,7 @@ with open(template_comment_file, 'r') as template:
     type_experiment = 'line' if args.experiment[-2:] == '_2' else 'cont'
     full_text = template.read()
     refant, fringe_cutoff, *all_sources = get_input_file_info()
-    full_text = full_text.format(setup_header=parse_setup(args.experiment, type_experiment, *get_setup()),
+    full_text = full_text.format(setup_header=parse_setup(args.experiment.split('_')[0], type_experiment, *get_setup()),
                      sources_info=parse_sources(*all_sources),
                      station_info=parse_antennas(get_antennas()), fringe_cutoff=fringe_cutoff,
                      ref_antenna=refant, type_info=parse_line_info(type_experiment))
@@ -343,11 +345,11 @@ with open(template_tasav_file, 'r') as template:
     full_text = template.read()
     refant, fringe_cutoff, bp_sources, pcal_sources, target_sources = get_input_file_info()
     if pcal_sources is None:
-        full_text = full_text.format(expname=args.experiment.upper(),
+        full_text = full_text.format(expname=args.experiment.upper().split('_')[0],
                                 fringe_sources=parse_sources_list(bp_sources, 3),
                                 bandpass_sources=parse_sources_list(bp_sources, 4))
     else:
-        full_text = full_text.format(expname=args.experiment.upper(),
+        full_text = full_text.format(expname=args.experiment.upper().split('_')[0],
                                 fringe_sources=parse_sources_list(list(set(bp_sources + pcal_sources)), 3),
                                 bandpass_sources=parse_sources_list(bp_sources, 4))
     if args.output_tasav is None:
