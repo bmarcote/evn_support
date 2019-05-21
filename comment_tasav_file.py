@@ -3,10 +3,12 @@
 Creates the {exp}.comment and {exp}.tasav.txt files for the EVN Pipeline.
 Given a default template, customizes it to include the basic data from the given experiment.
 
-Version: 2.6
+Version: 2.7
 Date: May 2019
 Author: Benito Marcote (marcote@jive.eu)
 
+version 2.7 changes
+- Bug fix when EXP is an e-EVN (and different from the run name).
 version 2.6 changes
 - Bug fix searching for EXP with _N in MASTER_PROJECTS.LIS
 version 2.5 changes
@@ -32,7 +34,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-__version__ = 2.6
+__version__ = 2.7
 # The .comment file template is located in the same directory as this script. Or it should be.
 template_comment_file = os.path.dirname(os.path.abspath(__file__)) + '/template.comment'
 template_tasav_file = os.path.dirname(os.path.abspath(__file__)) + '/template.tasav.txt'
@@ -233,6 +235,9 @@ def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
     date = subprocess.getoutput('ssh jops@ccs grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3'.format(exp.upper()))
     if date == '':
         date = subprocess.getoutput('ssh jops@ccs grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4'.format(exp.upper()))
+    if '\n' in date:
+        # Can happen in case of e-EVNs if this is not the official run exp name.
+        date = date.split('\n')[1].strip()
     obsdate = dt.strptime(date, '%Y%m%d')
     if freq < 0.6:
         band = 'P'
