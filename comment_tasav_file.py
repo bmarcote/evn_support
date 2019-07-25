@@ -258,7 +258,7 @@ def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
 
     name_pols = {1: 'single', 2: 'dual', 4: 'full'}
     s = '{}. {}-band experiment observed on {}.\n'.format(exp.upper(), band, obsdate.strftime('%d %B %Y'))
-    s += 'This is a {} pass data.<br>\n'.format('continuum' if type_exp == 'cont' else 'spectral line')
+    s += 'This is a {} pass dataset.<br>\n'.format('continuum' if type_exp == 'cont' else 'spectral line')
     s += 'The data rate was {} Mbps ({} x {} MHz subbands, {} polarization, two-bit sampling)<br>\n'.format(
             datarate, number_ifs, bandwidth, name_pols[pols])
 
