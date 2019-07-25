@@ -54,8 +54,13 @@ j2ms2 -v ${exp}.lis
 
 standardplots -weight ${exp}.ms $2 $3
 
+gv ${exp}-weight.ps
+ls ${exp}-auto*ps | parallel 'gv {}'
+ls ${exp}-cross*ps | parallel 'gv {}'
+ls ${exp}-ampphase*ps | parallel 'gv {}'
 
-read -q "REPLY?Check the standard plots. Do you want to continue? (y/n) "
+
+read -q "REPLY?Please, update the PI letter. Do you want to continue? (y/n) "
 if [[ ! $REPLY == 'y' ]];then
 	exit
 fi
@@ -79,5 +84,6 @@ archive -auth -e ${exp}_${date} -n ${exp} -p ${pass}
 archive -stnd -e ${exp}_${date} ${exp}.piletter *ps.gz
 archive -fits -e ${exp}_${date}  *IDI*
 
+echo '\n\nWork at eee finished.\n'
 
 
