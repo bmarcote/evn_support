@@ -131,7 +131,7 @@ function post_process_pipe() {
 
     # Create all the required directories and move to marcote/experiment one
     em ${experiment}
-    vlbeerexp $2 ${experiment}
+    # vlbeerexp $2 ${experiment}
 
     read -q "REPLY?Do you have all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -139,8 +139,8 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    uvflgall.csh
-    antab_check.py
+    # uvflgall.csh
+    # antab_check.py
 
     read -q "REPLY?Have you fixed all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -148,10 +148,10 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    cat ${experiment}*.antabfs > "${experiment}.antab"
-    cat ${experiment}*.uvflgfs > "${experiment}.uvflg"
-    cp "${experiment}.antab" "$IN/${experiment}/"
-    cp "${experiment}.uvflg" "$IN/${experiment}/"
+    # cat ${experiment}*.antabfs > "${experiment}.antab"
+    # cat ${experiment}*.uvflgfs > "${experiment}.uvflg"
+    # cp "${experiment}.antab" "$IN/${experiment}/"
+    # cp "${experiment}.uvflg" "$IN/${experiment}/"
     cd "$IN/${experiment}"
 
     # Input file and minimal modifications
@@ -159,7 +159,11 @@ function post_process_pipe() {
     replace "userno = 3602" "userno = $(give_me_next_userno.sh)" -- "${experiment}.inp.txt"
     replace "experiment = n05c3" "experiment = ${experiment}" -- "${experiment}.inp.txt"
 
-    echo "You should now edit the input file.\n"
+    read -q "REPLY?You should now edit the input file. Do you want to continue? (y/n) "
+    if [[ ! $REPLY == 'y' ]];then
+        exit
+    fi
+    echo '\n'
     EVN.py ${experiment}.inp.txt
     read -q "REPLY?Do you want to continue (pipeline properly finished)? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -178,7 +182,7 @@ function post_process_pipe() {
     fi
     echo '\n'
     archive_pipeline ${experiment} ${epoch}
-    # ampcal.sh
+    ampcal.sh
 
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 }
