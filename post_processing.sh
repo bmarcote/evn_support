@@ -36,7 +36,7 @@ function post_process_eee() {
     scp jops@ccs:/ccs/expr/${Experiment}/${experiment}.vix ./${experiment}.vix
     scp jops@ccs:/ccs/expr/${Experiment}/${experiment}.lis ./${experiment}.lis
     scp jops@jop83:piletters/${experiment}.piletter .
-    scp jops@jop83:piletters/${experiment}.experimentsum .
+    scp jops@jop83:piletters/${experiment}.expsum .
     ln -s ${experiment}.vix ${Experiment}.vix
 
     checklis ${experiment}.lis
@@ -99,9 +99,9 @@ function post_process_eee() {
 function archive_pipeline() {
     # First argument should be experiment name (lower cases) second one epoch (YYMMDD)
     cd $IN/$1
-    archive -pipe -e ${1}_${2}
+    su jops -c "/export/jive/jops/bin/archive/user/archive.pl -pipe -e ${1}_${2}"
     cd $OUT/$1
-    archive -pipe -e ${1}_${2}
+    su jops -c "/export/jive/jops/bin/archive/user/archive.pl -pipe -e ${1}_${2}"
 }
 
 function post_process_pipe() {
@@ -131,7 +131,7 @@ function post_process_pipe() {
 
     # Create all the required directories and move to marcote/experiment one
     em ${experiment}
-    # vlbeerexp $2 ${experiment}
+    vlbeerexp $2 ${experiment}
 
     read -q "REPLY?Do you have all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -139,8 +139,8 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    # uvflgall.csh
-    # antab_check.py
+    uvflgall.csh
+    antab_check.py
 
     read -q "REPLY?Have you fixed all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -148,16 +148,16 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    # cat ${experiment}*.antabfs > "${experiment}.antab"
-    # cat ${experiment}*.uvflgfs > "${experiment}.uvflg"
-    # cp "${experiment}.antab" "$IN/${experiment}/"
-    # cp "${experiment}.uvflg" "$IN/${experiment}/"
+    cat ${experiment}*.antabfs > "${experiment}.antab"
+    cat ${experiment}*.uvflgfs > "${experiment}.uvflg"
+    cp "${experiment}.antab" "$IN/${experiment}/"
+    cp "${experiment}.uvflg" "$IN/${experiment}/"
     cd "$IN/${experiment}"
 
     # Input file and minimal modifications
-    # cp ../template.inp ${experiment}.inp.txt
-    # replace "userno = 3602" "userno = $(give_me_next_userno.sh)" -- "${experiment}.inp.txt"
-    # replace "experiment = n05c3" "experiment = ${experiment}" -- "${experiment}.inp.txt"
+    cp ../template.inp ${experiment}.inp.txt
+    replace "userno = 3602" "userno = $(give_me_next_userno.sh)" -- "${experiment}.inp.txt"
+    replace "experiment = n05c3" "experiment = ${experiment}" -- "${experiment}.inp.txt"
 
     echo "You should now edit the input file.\n"
     EVN.py ${experiment}.inp.txt
@@ -169,7 +169,7 @@ function post_process_pipe() {
 
     cd $OUT/${experiment}
     comment_tasav_file.py ${experiment}
-    feedback.pl -experiment '${experiment}' -jss 'marcote'
+    feedback.pl -exp "${experiment}" -jss 'marcote'
     echo "You may need to modify the comment file and/or run again feedback.pl\n"
 
     read -q "REPLY?Do you want to archive the pipeline results (protect them afterwards)? (y/n) "
@@ -177,8 +177,8 @@ function post_process_pipe() {
         exit
     fi
     echo '\n'
-    su jops -c "archive_pipeline ${experiment} ${epoch}"
-    ampcal.sh
+    archive_pipeline ${experiment} ${epoch}
+    # ampcal.sh
 
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 }
