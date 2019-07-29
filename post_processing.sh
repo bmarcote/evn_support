@@ -1,10 +1,10 @@
-#! /bin/zsh
+#! /usr/bin/env zsh
 
 function post_process_eee() {
-    # Three parameters are expected:
-    #	- The experiment name (case insensitive).
-    #	- The reference station to use in standardplots.
-    #	- The calibrators to use in standardplots.
+    # Three parameters are experimentected:
+    # - The experiment name (case insensitive).
+    # - The reference station to use in standardplots.
+    # - The calibrators to use in standardplots.
     # This script should be run from the experiment folder.
     if [[ ! ( -n $1 && -n $2 && -n $3 ) ]];then
         echo "Three parameters are required:"
@@ -14,34 +14,38 @@ function post_process_eee() {
         exit
     fi
 
-    exp=$1
-    exp=${(L)1}
-    EXP=${(U)1}
+    q="$1"
+    # echo $q
+    # echo "${(U)q}"
+    experiment=$(echo "${(L)q}")
+    Experiment=$(echo "${(U)q}")
+    # echo $experiment $Experiment
 
-    date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3}
+    epoch=$(ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
     # In the case of eEVN with an experiment name different this method may not work
-    if [[ -n $date ]];then
-        date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4}
+    if [[ ! -n $epoch ]];then
+        epoch=$(ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4)
     fi
 
     # Sometimes it has a \n or empty spaces.
-    date=${${${date}:s/"\\n"/""}:s/" "/""}
+    epoch=${${${epoch}:s/"\\n"/""}:s/" "/""}
+    epoch=$(echo $epoch | cut -c3-)
 
-    echo 'Processing experiment ${EXP}_${date}.\n'
+    echo "Processing experiment ${Experiment}_${epoch}.\n"
 
 
     # Create the lis file from ccs
-    ssh jops@ccs "cd /ccs/expr/${EXP};/ccs/bin/make_lis -e ${EXP} -p prod -s ${exp}.lis"
+    ssh jops@ccs "cd /ccs/expr/${Experiment};/ccs/bin/make_lis -e ${Experiment} -p prod -s ${experiment}.lis"
 
-    scp jops@ccs:/ccs/expr/${EXP}/${exp}.vix ./${exp}.vix
-    scp jops@ccs:/ccs/expr/${EXP}/${exp}.lis ./${exp}.lis
+    scp jops@ccs:/ccs/expr/${Experiment}/${experiment}.vix ./${experiment}.vix
+    scp jops@ccs:/ccs/expr/${Experiment}/${experiment}.lis ./${experiment}.lis
 
-    scp jops@jop83:piletters/${exp}.piletter .
-    scp jops@jop83:piletters/${exp}.expsum .
+    scp jops@jop83:piletters/${experiment}.piletter .
+    scp jops@jop83:piletters/${experiment}.experimentsum .
 
-    ln -s ${exp}.vix ${EXP}.vix
+    ln -s ${experiment}.vix ${Experiment}.vix
 
-    checklis ${exp}.lis
+    checklis ${experiment}.lis
 
     read -q "REPLY?Are you happy with this lis file? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -49,17 +53,24 @@ function post_process_eee() {
     fi
     echo '\n'
 
-    getdata.pl -proj ${EXP} -lis ${exp}.lis
+    getdata.pl -proj ${Experiment} -lis ${experiment}.lis
 
-    j2ms2 -v ${exp}.lis
+    j2ms2 -v ${experiment}.lis
 
-    standardplots -weight ${exp}.ms $2 $3
+    standardplots -weight ${experiment}.ms $2 $3
 
-    gv ${exp}-weight.ps
-    ls ${exp}-auto*ps | parallel 'gv {}'
-    ls ${exp}-cross*ps | parallel 'gv {}'
-    ls ${exp}-ampphase*ps | parallel 'gv {}'
+    gv ${experiment}-weight.ps
+    ls ${experiment}-auto*ps | parallel 'gv {}'
+    ls ${experiment}-cross*ps | parallel 'gv {}'
+    ls ${experiment}-ampphase*ps | parallel 'gv {}'
 
+
+    ysfocus.py ${experiment}.ms
+
+    read -q "THRESHOLD?Which weight threshold should be applied to the data? "
+    echo '\n'
+
+    flag_weights.py ${experiment}.ms $THRESHOLD
 
     read -q "REPLY?Please, update the PI letter. Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -67,18 +78,10 @@ function post_process_eee() {
     fi
     echo '\n'
 
+    tConvert ${experiment}.ms ${experiment}_1_1.IDI
 
-    ysfocus.py ${exp}.ms
-
-    read -q "THRESHOLD?Which weight threshold should be applied to the data? "
-    echo '\n'
-
-    flag_weights.py ${exp}.ms $THRESHOLD
-
-    tConvert ${exp}.ms ${exp}_1_1.IDI
-
-    export pass=$(date | md5sum | cut -b 1-12)
-    touch ${exp}_${pass}.auth
+    experimentort pass=$(date | md5sum | cut -b 1-12)
+    touch ${experiment}_${pass}.auth
 
 
     read -q "REPLY?If you need to PolConvert, DO IT NOW. Do you want to continue? (y/n) "
@@ -88,18 +91,18 @@ function post_process_eee() {
     echo '\n'
 
     gzip *ps
-    archive -auth -e ${exp}_${date} -n ${exp} -p ${pass}
-    archive -stnd -e ${exp}_${date} ${exp}.piletter *ps.gz
-    archive -fits -e ${exp}_${date}  *IDI*
+    archive -auth -e ${experiment}_${epoch} -n ${experiment} -p ${pass}
+    archive -stnd -e ${experiment}_${epoch} ${experiment}.piletter *ps.gz
+    archive -fits -e ${experiment}_${epoch}  *IDI*
 
-    pipelet.py ${exp} marcote
+    pipelet.py ${experiment} marcote
 
     echo '\n\nWork at eee finished.\n'
 }
 
 
 function archive_pipeline() {
-    # First argument should be experiment name (lower cases) second one date (YYMMDD)
+    # First argument should be experiment name (lower cases) second one epoch (YYMMDD)
     cd $IN/$1
     archive -pipe -e ${1}_${2}
     cd $OUT/$1
@@ -115,23 +118,23 @@ function post_process_pipe() {
         exit
     fi
 
-    exp=$1
-    exp=${(L)1}
-    EXP=${(U)1}
+    # experiment=$1
+    experiment=${(L)1}
+    Experiment=${(U)1}
 
-    date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3}
+    epoch=${ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3}
     # In the case of eEVN with an experiment name different this method may not work
-    if [[ -n $date ]];then
-        date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4}
+    if [[ -n $epoch ]];then
+        epoch=${ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4}
     fi
 
     # Sometimes it has a \n or empty spaces.
-    date=${${${date}:s/"\\n"/""}:s/" "/""}
+    epoch=${${${epoch}:s/"\\n"/""}:s/" "/""}
 
 
-    # Create all the required directories and move to marcote/exp one
-    em ${exp}
-    vlbeerexp $2 ${exp}
+    # Create all the required directories and move to marcote/experiment one
+    em ${experiment}
+    vlbeerexperiment $2 ${experiment}
 
     read -q "REPLY?Do you have all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -148,16 +151,16 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    cat ${exp}*.antabfs > ${exp}.antab
-    cat ${exp}*.uvflgfs > ${exp}.uvflg
-    cp ${exp}.antab $IN/${exp}/
-    cp ${exp}.uvflg $IN/${exp}/
-    cd $IN/${exp}
+    cat ${experiment}*.antabfs > ${experiment}.antab
+    cat ${experiment}*.uvflgfs > ${experiment}.uvflg
+    cp ${experiment}.antab $IN/${experiment}/
+    cp ${experiment}.uvflg $IN/${experiment}/
+    cd $IN/${experiment}
 
     # Input file and minimal modifications
-    cp ../template.inp ${exp}.inp.txt
-    replace "userno = 3602" "userno = ${give_me_next_userno.sh}" -- ${exp}.inp.txt
-    replace "experiment = n05c3" "experiment = ${exp}" -- ${exp}.inp.txt
+    cp ../template.inp ${experiment}.inp.txt
+    replace "userno = 3602" "userno = ${give_me_next_userno.sh}" -- ${experiment}.inp.txt
+    replace "experiment = n05c3" "experiment = ${experiment}" -- ${experiment}.inp.txt
 
     echo "You should now edit the input file and run the EVN pipeline by your own.\n"
     read -q "REPLY?Do you want to continue (pipeline properly finished)? (y/n) "
@@ -166,9 +169,9 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    cd $OUT/${exp}
-    comment_tasav_file.py ${exp}
-    feedback.pl -exp '${exp}' -jss 'marcote'
+    cd $OUT/${experiment}
+    comment_tasav_file.py ${experiment}
+    feedback.pl -experiment '${experiment}' -jss 'marcote'
     echo "You may need to modify the comment file and/or run again feedback.pl\n"
 
     read -q "REPLY?Do you want to archive the pipeline results (protect them afterwards)? (y/n) "
@@ -176,7 +179,7 @@ function post_process_pipe() {
         exit
     fi
     echo '\n'
-    su jops -c "archive_pipeline ${exp} ${date}"
+    su jops -c "archive_pipeline ${experiment} ${epoch}"
     ampcal.sh
 
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
