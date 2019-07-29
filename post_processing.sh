@@ -107,16 +107,11 @@ function archive_pipeline() {
 }
 
 function post_process_pipe() {
-    # Three parameters are expected:
-    #	- The experiment name (case insensitive).
-    #	- The reference station to use in standardplots.
-    #	- The calibrators to use in standardplots.
     # This script should be run from the experiment folder.
-    if [[ ! ( -n $1 && -n $2 && -n $3 ) ]];then
-        echo "Three parameters are required:"
+    if [[ ! ( -n $1 && -n $2 ) ]];then
+        echo "Two parameters are required:"
         echo " - experiment name (case insensitive)."
         echo " - session (in mmmYY format e.g. feb18)."
-        echo " - Calibrators to be used for the plots."
         exit
     fi
 
@@ -189,8 +184,10 @@ function post_process_pipe() {
 
 
 if [[ hostname=="eee2" ]];then
-    post_process_eee $1 $2
+    echo "Executing steps from eee..."
+    post_process_eee $1 $2 $3
 elif [[ hostname=="jop83" ]];then
+    echo "Executing steps from pipe..."
     post_process_pipe $1 $2
 fi
 
