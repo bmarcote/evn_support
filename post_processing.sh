@@ -181,12 +181,14 @@ function post_process_pipe() {
 }
 
 
-if [[ $HOSTNAME=="eee2" ]];then
+if [[ $HOSTNAME == "eee2" ]];then
     echo "Executing steps from eee..."
     post_process_eee $1 $2 $3
-elif [[ $HOST=="jop83" ]];then
+elif [[ $HOST == "JOP83" ]];then
     echo "Executing steps from pipe..."
     post_process_pipe $1 $2
+else
+    echo "Computer not recognized."
 fi
 
 
