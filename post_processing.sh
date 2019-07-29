@@ -14,12 +14,9 @@ function post_process_eee() {
         exit
     fi
 
-    q="$1"
-    # echo $q
-    # echo "${(U)q}"
-    experiment=$(echo "${(L)q}")
-    Experiment=$(echo "${(U)q}")
-    # echo $experiment $Experiment
+	export PATH=$PATH:/home/jops/scripts/:/home/jops/bin/:/home/jops/.local/bin:$PATH:/data0/marcote/scripts/evn_support/
+    experiment=$(echo "${(L)1}")
+    Experiment=$(echo "${(U)1}")
 
     epoch=$(ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
     # In the case of eEVN with an experiment name different this method may not work
@@ -36,13 +33,10 @@ function post_process_eee() {
 
     # Create the lis file from ccs
     ssh jops@ccs "cd /ccs/expr/${Experiment};/ccs/bin/make_lis -e ${Experiment} -p prod -s ${experiment}.lis"
-
     scp jops@ccs:/ccs/expr/${Experiment}/${experiment}.vix ./${experiment}.vix
     scp jops@ccs:/ccs/expr/${Experiment}/${experiment}.lis ./${experiment}.lis
-
     scp jops@jop83:piletters/${experiment}.piletter .
     scp jops@jop83:piletters/${experiment}.experimentsum .
-
     ln -s ${experiment}.vix ${Experiment}.vix
 
     checklis ${experiment}.lis
@@ -67,8 +61,8 @@ function post_process_eee() {
 
     ysfocus.py ${experiment}.ms
 
-    read -q "THRESHOLD?Which weight threshold should be applied to the data? "
-    echo '\n'
+    read "THRESHOLD?Which weight threshold should be applied to the data? "
+    # echo '\n'
 
     flag_weights.py ${experiment}.ms $THRESHOLD
 
@@ -80,7 +74,7 @@ function post_process_eee() {
 
     tConvert ${experiment}.ms ${experiment}_1_1.IDI
 
-    experimentort pass=$(date | md5sum | cut -b 1-12)
+    pass=$(date | md5sum | cut -b 1-12)
     touch ${experiment}_${pass}.auth
 
 
@@ -91,9 +85,10 @@ function post_process_eee() {
     echo '\n'
 
     gzip *ps
-    archive -auth -e ${experiment}_${epoch} -n ${experiment} -p ${pass}
-    archive -stnd -e ${experiment}_${epoch} ${experiment}.piletter *ps.gz
-    archive -fits -e ${experiment}_${epoch}  *IDI*
+    archive.pl -auth -e ${experiment}_${epoch} -n ${experiment} -p ${pass}
+    echo "Archiving..."
+    archive.pl -stnd -e ${experiment}_${epoch} ${experiment}.piletter *ps.gz
+    archive.pl -fits -e ${experiment}_${epoch}  *IDI*
 
     pipelet.py ${experiment} marcote
 
