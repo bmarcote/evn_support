@@ -14,7 +14,7 @@ function post_process_eee() {
         exit
     fi
 
-	export PATH=$PATH:/home/jops/scripts/:/home/jops/bin/:/home/jops/.local/bin:$PATH:/data0/marcote/scripts/evn_support/
+    export PATH=$PATH:/home/jops/scripts/:/home/jops/bin/:/home/jops/.local/bin:$PATH:/data0/marcote/scripts/evn_support/
     experiment=$(echo "${(L)1}")
     Experiment=$(echo "${(U)1}")
 
@@ -112,24 +112,26 @@ function post_process_pipe() {
         echo " - session (in mmmYY format e.g. feb18)."
         exit
     fi
+    export PATH=$PATH:/home/jops/scripts/:/home/jops/bin/:/home/jops/.local/bin:$PATH:/data0/marcote/scripts/evn_support/
+    source /jop83_0/pipe/in/marcote/.zshrc
+    experiment=$(echo "${(L)1}")
+    Experiment=$(echo "${(U)1}")
 
-    # experiment=$1
-    experiment=${(L)1}
-    Experiment=${(U)1}
-
-    epoch=${ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3}
+    epoch=$(ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
     # In the case of eEVN with an experiment name different this method may not work
-    if [[ -n $epoch ]];then
-        epoch=${ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4}
+    if [[ ! -n $epoch ]];then
+        epoch=$(ssh jops@ccs grep $Experiment /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4)
     fi
 
     # Sometimes it has a \n or empty spaces.
     epoch=${${${epoch}:s/"\\n"/""}:s/" "/""}
+    epoch=$(echo $epoch | cut -c3-)
 
+    echo "Processing experiment ${Experiment}_${epoch}.\n"
 
     # Create all the required directories and move to marcote/experiment one
     em ${experiment}
-    vlbeerexperiment $2 ${experiment}
+    # vlbeerexp $2 ${experiment}
 
     read -q "REPLY?Do you have all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -137,8 +139,8 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    uvflgall.csh
-    antab_check.py
+    # uvflgall.csh
+    # antab_check.py
 
     read -q "REPLY?Have you fixed all ANTAB files? Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -146,18 +148,19 @@ function post_process_pipe() {
     fi
     echo '\n'
 
-    cat ${experiment}*.antabfs > ${experiment}.antab
-    cat ${experiment}*.uvflgfs > ${experiment}.uvflg
-    cp ${experiment}.antab $IN/${experiment}/
-    cp ${experiment}.uvflg $IN/${experiment}/
-    cd $IN/${experiment}
+    # cat ${experiment}*.antabfs > "${experiment}.antab"
+    # cat ${experiment}*.uvflgfs > "${experiment}.uvflg"
+    # cp "${experiment}.antab" "$IN/${experiment}/"
+    # cp "${experiment}.uvflg" "$IN/${experiment}/"
+    cd "$IN/${experiment}"
 
     # Input file and minimal modifications
-    cp ../template.inp ${experiment}.inp.txt
-    replace "userno = 3602" "userno = ${give_me_next_userno.sh}" -- ${experiment}.inp.txt
-    replace "experiment = n05c3" "experiment = ${experiment}" -- ${experiment}.inp.txt
+    # cp ../template.inp ${experiment}.inp.txt
+    # replace "userno = 3602" "userno = $(give_me_next_userno.sh)" -- "${experiment}.inp.txt"
+    # replace "experiment = n05c3" "experiment = ${experiment}" -- "${experiment}.inp.txt"
 
-    echo "You should now edit the input file and run the EVN pipeline by your own.\n"
+    echo "You should now edit the input file.\n"
+    EVN.py ${experiment}.inp.txt
     read -q "REPLY?Do you want to continue (pipeline properly finished)? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
@@ -181,10 +184,10 @@ function post_process_pipe() {
 }
 
 
-if [[ $HOSTNAME == "eee2" ]];then
+if [[ `hostname` == "eee2" ]];then
     echo "Executing steps from eee..."
     post_process_eee $1 $2 $3
-elif [[ $HOST == "JOP83" ]];then
+elif [[ `hostname` == "jop83" ]];then
     echo "Executing steps from pipe..."
     post_process_pipe $1 $2
 else
