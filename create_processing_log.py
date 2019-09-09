@@ -38,11 +38,13 @@ from datetime import datetime as dt
 usage = '%(prog)s [-h] [-d OBSDATE] [-e eEVN_session] [-jss SupSci] [-o outputfile] <experiment name>'
 help_eEVN = 'If this is an e-EVN experiment with a name different to the one used for the vex file, '\
             +'then provide the exp. name used to set the vex file.'
+help_password = 'Password for the access to the data in the EVN archive. By default it creates one automatically.'
 
 parser = argparse.ArgumentParser(description=description, prog='create_processing_log.py', usage=usage)
 parser.add_argument('expname', type=str, help='Name of the experiment to process')
 parser.add_argument('-d', '--date', type=str, default=None, help='Date of the observations (in YYMMDD format)')
 parser.add_argument('-e', '--eEVN', type=str, default=None, help=help_eEVN)
+parser.add_argument('-p', '--password', type=str, default=None, help=help_password)
 parser.add_argument('-jss', type=str, default='marcote', help='Name of the Support Scientist running this')
 parser.add_argument('-o', type=str, default='processing.log', help='Output file (default: processing.log)')
 
@@ -147,12 +149,14 @@ ofile.write(f'flag_weights.py {args.expname.lower()}.ms 0.9\n\n\n\n')
 
 ofile.write(f'tConvert {args.expname.lower()}.ms {args.expname.lower()}_1_1.IDI\n\n')
 
+if args.password is None:
+    args.password = str(os.popen('date | md5sum | cut -b 1-12').read())[:-1]
+
 ofile.write('# Password for the experiment (generated with date | md5sum | cut -b 1-12):\n')
-passwd = str(os.popen('date | md5sum | cut -b 1-12').read())[:-1]
-ofile.write(f'touch {args.expname.lower()}_{passwd}.auth\n\n')
+ofile.write(f'touch {args.expname.lower()}_{args.password}.auth\n\n')
 ofile.write('# Edit the piletter\n\n')
 ofile.write('gzip *ps\n')
-ofile.write('archive -auth -e {0}_{1} -n {0} -p {2}\n'.format(args.expname.lower(), obsdate.strftime('%y%m%d'), passwd))
+ofile.write('archive -auth -e {0}_{1} -n {0} -p {2}\n'.format(args.expname.lower(), obsdate.strftime('%y%m%d'), args.password))
 ofile.write('archive -stnd -e {0}_{1} {0}.piletter *ps.gz\n'.format(args.expname.lower(), obsdate.strftime('%y%m%d')))
 ofile.write('archive -fits -e {0}_{1}  *IDI*\n\n'.format(args.expname.lower(), obsdate.strftime('%y%m%d')))
 ofile.write('# In case it is necessary (if the proposal was not sent through NorthStar):\n')

@@ -34,6 +34,10 @@ function post_process_eee() {
     fi
     cd /data0/marcote/$EXP
 
+    # Password for
+    export pass=$(date | md5sum | cut -b 1-12)
+    create_processing_log.py $EXP -p $pass
+
     # Create the lis file from ccs
     ssh jops@ccs "cd /ccs/expr/${EXP};/ccs/bin/make_lis -e ${EXP} -p prod -s ${exp}.lis"
 
@@ -81,7 +85,6 @@ function post_process_eee() {
 
     tConvert ${exp}.ms ${exp}_1_1.IDI
 
-    export pass=$(date | md5sum | cut -b 1-12)
     touch ${exp}_${pass}.auth
 
     echo "The experiment has been protected with"
