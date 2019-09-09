@@ -217,9 +217,13 @@ function post_process_pipe() {
 
 if [[ "$(hostname)" = "eee2" ]];then
     echo "We are in eee2!"
+    HOME=/data0/marcote
+    source /data0/marcote/.zshrc
     post_process_eee $1 $2 $3
 elif [[ "$(hostname)" = "jop83" ]];then
     echo "We are in pipe!"
+    HOME=/jop83_0/pipe/in/marcote
+    source /jop83_0/pipe/in/marcote.zshrc
     post_process_pipe $1 $2
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 else
@@ -237,7 +241,7 @@ else
     #	- The reference station to use in standardplots.
     #	- The calibrators to use in standardplots.
     #	- The session (in mmmYY format e.g. feb18)
-    ssh jops@eee -t "HOME=/data0/marcote/;zsh -l" "source /data0/marcote/.zshrc;/data0/marcote/scripts/evn_support/post_processing.sh $1 $2 $3"
+    ssh jops@eee -t "HOME=/data0/marcote/;zsh -l" "/data0/marcote/scripts/evn_support/post_processing.sh $1 $2 $3"
     read -q "REPLY?You may want to continue to pipe. (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
