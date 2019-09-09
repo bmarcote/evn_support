@@ -17,10 +17,10 @@ function post_process_eee() {
     exp=${(L)1}
     EXP=${(U)1}
 
-    date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
+    date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d ' ' -f 3)
     # In the case of eEVN with an experiment name different this method may not work
-    if [[ -n $date ]];then
-        date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4)
+    if [[ ! -n $date ]];then
+        date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d ' ' -f 4)
     fi
 
     # Sometimes it has a \n or empty spaces.
@@ -141,10 +141,10 @@ function post_process_pipe() {
     exp=${(L)1}
     EXP=${(U)1}
 
-    date=$(ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
+    date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d ' ' -f 3)
     # In the case of eEVN with an experiment name different this method may not work
-    if [[ -n $date ]];then
-        date=$(ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4)
+    if [[ ! -n $date ]];then
+        date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d ' ' -f 4)
     fi
 
     # Sometimes it has a \n or empty spaces.
