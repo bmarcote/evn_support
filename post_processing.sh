@@ -5,7 +5,6 @@ function post_process_eee() {
     #	- The experiment name (case insensitive).
     #	- The reference station to use in standardplots.
     #	- The calibrators to use in standardplots.
-    # This script should be run from the experiment folder.
     if [[ ! ( -n $1 && -n $2 && -n $3 ) ]];then
         echo "Three parameters are required:"
         echo " - experiment name (case insensitive)."
@@ -29,6 +28,8 @@ function post_process_eee() {
 
     echo 'Processing experiment ${EXP}_${date}.\n'
 
+    # Creating the experiment directory in /data0/marcote/EXP and moving to it
+    e $EXP
 
     # Create the lis file from ccs
     ssh jops@ccs "cd /ccs/expr/${EXP};/ccs/bin/make_lis -e ${EXP} -p prod -s ${exp}.lis"
@@ -109,14 +110,12 @@ function archive_pipeline() {
 function post_process_pipe() {
     # Three parameters are expected:
     #	- The experiment name (case insensitive).
-    #	- The reference station to use in standardplots.
-    #	- The calibrators to use in standardplots.
+    #	- The session (in mmmYY format e.g. feb18)
     # This script should be run from the experiment folder.
-    if [[ ! ( -n $1 && -n $2 && -n $3 ) ]];then
-        echo "Three parameters are required:"
+    if [[ ! ( -n $1 && -n $2 ) ]];then
+        echo "Two parameters are required:"
         echo " - experiment name (case insensitive)."
         echo " - session (in mmmYY format e.g. feb18)."
-        echo " - Calibrators to be used for the plots."
         exit
     fi
 
@@ -193,12 +192,24 @@ elif [[ hostname=="jop83" ]];then
     post_process_pipe $1 $2
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 else
-    # Executing everything from the beginning via ssh.
-    ssh jops@eee "post_process_eee $1 $2"
-    ssh pipe@jop83 "post_process_pipe $1 $2"
+    echo "We are here"
+    if [[ ! ( -n $1 && -n $2 && -n $3 && -n $4 ) ]];then
+        echo "Four parameters are required:"
+        echo " - experiment name (case insensitive)."
+        echo " - Reference station to be used for the plots and pipeline."
+        echo " - Calibrators to be used for the standardplots."
+        echo " - session (in mmmYY format e.g. feb18)."
+        exit
+    fi
+    # Three parameters are expected:
+    #	- The experiment name (case insensitive).
+    #	- The reference station to use in standardplots.
+    #	- The calibrators to use in standardplots.
+    #	- The session (in mmmYY format e.g. feb18)
+    ssh jops@eee "post_process_eee $1 $2 $3"
+    ssh pipe@jop83 "post_process_pipe $1 $4"
     ssh jops@jop83 "archive_pipeline ${exp} ${date}"
     echo '\n\nWork finished. You may want to distribute the experiment!\n'
 fi
-
 
 
