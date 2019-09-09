@@ -45,7 +45,7 @@ function post_process_eee() {
 
     ln -s ${exp}.vix ${EXP}.vix
 
-    checklis ${exp}.lis
+    checklis.py ${exp}.lis
 
     read -q "REPLY?Are you happy with this lis file? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
@@ -237,7 +237,7 @@ else
     #	- The reference station to use in standardplots.
     #	- The calibrators to use in standardplots.
     #	- The session (in mmmYY format e.g. feb18)
-    ssh jops@eee -t "HOME=/data0/marcote/;zsh -l" "/data0/marcote/scripts/evn_support/post_processing.sh $1 $2 $3"
+    ssh jops@eee -t "HOME=/data0/marcote/;zsh -l" "source /data0/marcote/.zshrc;/data0/marcote/scripts/evn_support/post_processing.sh $1 $2 $3"
     read -q "REPLY?You may want to continue to pipe. (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
