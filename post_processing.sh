@@ -186,13 +186,15 @@ function post_process_pipe() {
 }
 
 
-if [[ hostname=="eee2" ]];then
+if [[ "$(hostname)" = "eee2" ]];then
+    echo "We are in eee2!"
     post_process_eee $1 $2
-elif [[ hostname=="jop83" ]];then
+elif [[ "$(hostname)" = "jop83" ]];then
+    echo "We are in pipe!"
     post_process_pipe $1 $2
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 else
-    echo "We are here"
+    echo "We are somewhere else!"
     if [[ ! ( -n $1 && -n $2 && -n $3 && -n $4 ) ]];then
         echo "Four parameters are required:"
         echo " - experiment name (case insensitive)."
