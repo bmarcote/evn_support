@@ -69,19 +69,23 @@ function post_process_eee() {
     ls ${exp}-ampphase*ps | parallel 'gv {}'
 
 
-    read -q "REPLY?Please, update the PI letter. Do you want to continue? (y/n) "
+    read -q "REPLY?Do you want to continue? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
     fi
     echo '\n'
 
-
     ysfocus.py ${exp}.ms
 
-    read -q "THRESHOLD?Which weight threshold should be applied to the data? tConvert will run later "
-    echo '\n'
+    read "THRESHOLD?Which weight threshold should be applied to the data? tConvert will run later "
 
     flag_weights.py ${exp}.ms $THRESHOLD
+
+    read -q "REPLY?Please, update the PI letter. Do you want to continue (tConvert)? (y/n) "
+    if [[ ! $REPLY == 'y' ]];then
+        exit
+    fi
+    echo '\n'
 
     tConvert ${exp}.ms ${exp}_1_1.IDI
 
