@@ -238,6 +238,10 @@ else
     #	- The calibrators to use in standardplots.
     #	- The session (in mmmYY format e.g. feb18)
     ssh jops@eee -t "HOME=/data0/marcote/;zsh -l" "/data0/marcote/scripts/evn_support/post_processing.sh $1 $2 $3"
+    read -q "REPLY?You may want to continue to pipe. (y/n) "
+    if [[ ! $REPLY == 'y' ]];then
+        exit
+    fi
     ssh pipe@jop83 -t "setenv HOME /jop83_0/pipe/in/marcote;zsh -l" "/jop83_0/pipe/in/marcote/scripts/evn_support/post_processing.sh $1 $4"
 fi
 
