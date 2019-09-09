@@ -17,19 +17,22 @@ function post_process_eee() {
     exp=${(L)1}
     EXP=${(U)1}
 
-    date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3}
+    date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
     # In the case of eEVN with an experiment name different this method may not work
     if [[ -n $date ]];then
-        date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4}
+        date=$(ssh jops@ccs grep ${EXP} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4)
     fi
 
     # Sometimes it has a \n or empty spaces.
     date=${${${date}:s/"\\n"/""}:s/" "/""}
 
-    echo 'Processing experiment ${EXP}_${date}.\n'
+    echo "Processing experiment ${EXP}_${date}.\n"
 
     # Creating the experiment directory in /data0/marcote/EXP and moving to it
-    e $EXP
+    if [ ! -d /data0/marcote/$EXP ]; then
+        mkdir /data0/marcote/$EXP
+    fi
+    cd /data0/marcote/$EXP
 
     # Create the lis file from ccs
     ssh jops@ccs "cd /ccs/expr/${EXP};/ccs/bin/make_lis -e ${EXP} -p prod -s ${exp}.lis"
@@ -71,7 +74,7 @@ function post_process_eee() {
 
     ysfocus.py ${exp}.ms
 
-    read -q "THRESHOLD?Which weight threshold should be applied to the data? "
+    read -q "THRESHOLD?Which weight threshold should be applied to the data? tConvert will run later "
     echo '\n'
 
     flag_weights.py ${exp}.ms $THRESHOLD
@@ -81,8 +84,11 @@ function post_process_eee() {
     export pass=$(date | md5sum | cut -b 1-12)
     touch ${exp}_${pass}.auth
 
+    echo "The experiment has been protected with"
+    echo "Username: ${exp}"
+    echo "Password: ${pass}\n"
 
-    read -q "REPLY?If you need to PolConvert, DO IT NOW. Do you want to continue? (y/n) "
+    read -q "REPLY?If you need to PolConvert, DO IT NOW. Do you want to continue and archive? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
     fi
@@ -101,11 +107,23 @@ function post_process_eee() {
 
 function archive_pipeline() {
     # First argument should be experiment name (lower cases) second one date (YYMMDD)
-    cd $IN/$1
-    archive -pipe -e ${1}_${2}
-    cd $OUT/$1
-    archive -pipe -e ${1}_${2}
+    ssh jops@jop83 "cd /jop83_0/pipe/in/$1;archive -pipe -e ${1}_${2}"
+    ssh jops@jop83 "cd /jop83_0/pipe/out/$1;archive -pipe -e ${1}_${2}"
 }
+
+function vlbeerexp () {
+    # Retrieve the log and antabfs files from vlbeer for the given experiment
+    if [[ ! ( -n $1 && -n $2) ]];then
+        echo "Two parameters are required:"
+        echo " - Session (mmmYY e.g. feb18)."
+        echo " - Experiment name (in lower case)."
+    else
+        scp -r evn@vlbeer.ira.inaf.it:vlbi_arch/$1/$2\*log .
+        scp -r evn@vlbeer.ira.inaf.it:vlbi_arch/$1/$2\*antabfs .
+        ls
+    fi
+}
+
 
 function post_process_pipe() {
     # Three parameters are expected:
@@ -123,21 +141,30 @@ function post_process_pipe() {
     exp=${(L)1}
     EXP=${(U)1}
 
-    date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3}
+    date=$(ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 3)
     # In the case of eEVN with an experiment name different this method may not work
     if [[ -n $date ]];then
-        date=${ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4}
+        date=$(ssh jops@ccs grep EC067A /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4)
     fi
 
     # Sometimes it has a \n or empty spaces.
     date=${${${date}:s/"\\n"/""}:s/" "/""}
 
-
     # Create all the required directories and move to marcote/exp one
-    em ${exp}
+    if [ ! -d $IN/marcote/${exp} ];then
+        mkdir $IN/marcote/${exp}
+    fi
+    if [ ! -d $IN/${exp} ];then
+        mkdir $IN/${exp}
+    fi
+    if [ ! -d $OUT/${exp} ];then
+        mkdir $OUT/${exp}
+    fi
+    cd $IN/marcote/${exp}
+
     vlbeerexp $2 ${exp}
 
-    read -q "REPLY?Do you have all ANTAB files? Do you want to continue? (y/n) "
+    read -q "REPLY?Do you received all ANTAB files? Do you want to create uvflg and antab_check? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
     fi
@@ -180,9 +207,11 @@ function post_process_pipe() {
         exit
     fi
     echo '\n'
-    # su jops -c "archive_pipeline ${exp} ${date}"
+    archive_pipeline ${exp} ${date}
+
     ampcal.sh
 
+    echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 }
 
 
@@ -208,10 +237,8 @@ else
     #	- The reference station to use in standardplots.
     #	- The calibrators to use in standardplots.
     #	- The session (in mmmYY format e.g. feb18)
-    ssh jops@eee -t "HOME=/data0/marcote/;zsh" "post_processing.sh $1 $2 $3"
-    ssh pipe@jop83 -t "setenv HOME /jop83_0/pipe/in/marcote;post_processing.sh $1 $4"
-    ssh jops@jop83 "archive_pipeline ${exp} ${date}"
-    echo '\n\nWork finished. You may want to distribute the experiment!\n'
+    ssh jops@eee -t "HOME=/data0/marcote/;zsh -l" "/data0/marcote/scripts/evn_support/post_processing.sh $1 $2 $3"
+    ssh pipe@jop83 -t "setenv HOME /jop83_0/pipe/in/marcote;zsh -l" "/jop83_0/pipe/in/marcote/scripts/evn_support/post_processing.sh $1 $4"
 fi
 
 
