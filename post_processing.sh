@@ -176,15 +176,14 @@ function post_process_pipe() {
     feedback.pl -exp '${exp}' -jss 'marcote'
     echo "You may need to modify the comment file and/or run again feedback.pl\n"
 
-    read -q "REPLY?Do you want to archive the pipeline results (protect them afterwards)? (y/n) "
+    read -q "REPLY?You may want to archive the pipeline results and protect them afterwards. (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
     fi
     echo '\n'
-    su jops -c "archive_pipeline ${exp} ${date}"
+    # su jops -c "archive_pipeline ${exp} ${date}"
     ampcal.sh
 
-    echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 }
 
 
@@ -192,6 +191,13 @@ if [[ hostname=="eee2" ]];then
     post_process_eee $1 $2
 elif [[ hostname=="jop83" ]];then
     post_process_pipe $1 $2
+    echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
+else
+    # Executing everything from the beginning via ssh.
+    ssh jops@eee "post_process_eee $1 $2"
+    ssh pipe@jop83 "post_process_pipe $1 $2"
+    ssh jops@jop83 "archive_pipeline ${exp} ${date}"
+    echo '\n\nWork finished. You may want to distribute the experiment!\n'
 fi
 
 
