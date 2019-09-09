@@ -230,7 +230,7 @@ if [[ "$(hostname)" = "eee2" ]];then
 elif [[ "$(hostname)" = "jop83" ]];then
     echo "We are in pipe!"
     HOME=/jop83_0/pipe/in/marcote
-    source /jop83_0/pipe/in/marcote.zshrc
+    source /jop83_0/pipe/in/marcote/.zshrc
     post_process_pipe $1 $2
     echo '\n\nWork at pipe finished. You may want to distribute the experiment!\n'
 else
