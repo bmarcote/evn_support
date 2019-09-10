@@ -194,10 +194,16 @@ function post_process_pipe() {
 
     # Input file and minimal modifications
     cp ../template.inp ${exp}.inp.txt
-    replace "userno = 3602" "userno = ${give_me_next_userno.sh}" -- ${exp}.inp.txt
+    replace "userno = 3602" "userno = $(give_me_next_userno.sh)" -- ${exp}.inp.txt
     replace "experiment = n05c3" "experiment = ${exp}" -- ${exp}.inp.txt
 
-    echo "You should now edit the input file and run the EVN pipeline by your own.\n"
+    read -q "REPLY?You should now edit the input file... Are you ready to run the EVN pipeline? (y/n) "
+    if [[ ! $REPLY == 'y' ]];then
+        exit
+    fi
+    echo '\n'
+    EVN.py ${exp}.inp.txt
+
     read -q "REPLY?Do you want to continue (pipeline properly finished)? (y/n) "
     if [[ ! $REPLY == 'y' ]];then
         exit
@@ -206,7 +212,7 @@ function post_process_pipe() {
 
     cd $OUT/${exp}
     comment_tasav_file.py ${exp}
-    feedback.pl -exp '${exp}' -jss 'marcote'
+    feedback.pl -exp "${exp}" -jss 'marcote'
     echo "You may need to modify the comment file and/or run again feedback.pl\n"
 
     read -q "REPLY?You may want to archive the pipeline results and protect them afterwards. (y/n) "
