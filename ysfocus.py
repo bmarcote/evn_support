@@ -70,7 +70,7 @@ except ImportError:
 
 # The STATION name can be either the full name or the abreviation
 fixed_mounts = {'YEBES40M': 'ALT-AZ-NASMYTH-RH', 'YS': 'ALT-AZ-NASMYTH-RH',
-                'HOBART': 'X-YEW', 'HO': 'X-YEW'}
+                'HOBART': 'X-YEW', 'HO': 'X-YEW', 'HOB_DBBC': 'X-YEW'}
 
 
 
