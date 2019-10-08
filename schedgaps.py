@@ -70,7 +70,7 @@ for i,scope in enumerate(telescopes):
       if float((scan[4+i])) >= args.early:
         #print (scope, map(int,scan[1].split(':')))
         currentTime=(scan[0]+'/'+scan[1])
-        #print(lastGap, currentTime)
+        # print(lastGap, currentTime)
         tDiff = datetime.strptime(currentTime, '%j/%H:%M:%S') - datetime.strptime(lastGap, '%j/%H:%M:%S')
         if tDiff.total_seconds()/60.0 > 15.0:
           print("%s%s, %s to %s,  Interval = %.1f minutes" % (contStationText, scope, lastGap, currentTime,  (tDiff.total_seconds()/60)))
@@ -84,7 +84,8 @@ for i,scope in enumerate(telescopes):
         pass
 
 
-  currentTime=(scan[0]+'/'+scan[1])
+  currentTime=(scan[1]+'/'+scan[2])
+  # print(lastGap, currentTime)
   tDiff = datetime.strptime(currentTime, '%j/%H:%M:%S') - datetime.strptime(lastGap, '%j/%H:%M:%S')
   if tDiff.total_seconds()/60.0 > 15.0:
     print("%s%s, %s to %s,  Interval = %.1f minutes" % (contStationText, scope, lastGap, currentTime,  (tDiff.total_seconds()/60)))
@@ -93,3 +94,5 @@ for i,scope in enumerate(telescopes):
 
 print()
 print("Stations with an * use continuous cal and can be ignored\n")
+
+
