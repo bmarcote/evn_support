@@ -84,7 +84,10 @@ for i,scope in enumerate(telescopes):
         pass
 
 
-  currentTime=(scan[1]+'/'+scan[2])
+  if ':' in scan[1]:
+    currentTime=(scan[0]+'/'+scan[1])
+  else:
+    currentTime=(scan[1]+'/'+scan[2])
   # print(lastGap, currentTime)
   tDiff = datetime.strptime(currentTime, '%j/%H:%M:%S') - datetime.strptime(lastGap, '%j/%H:%M:%S')
   if tDiff.total_seconds()/60.0 > 15.0:
