@@ -91,11 +91,10 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
 
         # In case no station has been found in the MS
         if len(stations_to_change) == 0:
-            print("Neither Ys nor Ho found in the MS, exiting without action")
+            print("Neither Ys nor Ho found in the MS, no ysfocus.py required.")
+        else:
+            ant_table.putcol('MOUNT', mounts)
+            ant_table.flush()
+            print('\nDone.')
 
-        ant_table.putcol('MOUNT', mounts)
-        # Should not be necessary, but it's casacore, who knows...
-        ant_table.flush()
-
-print('\nDone.')
 
