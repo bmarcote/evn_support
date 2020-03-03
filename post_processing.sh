@@ -167,6 +167,7 @@ function post_process_pipe() {
     if [ ! -d $OUT/${exp} ];then
         mkdir $OUT/${exp}
     fi
+
     cd $IN/marcote/${exp}
 
     vlbeerexp $2 ${exp}
