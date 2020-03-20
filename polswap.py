@@ -11,7 +11,7 @@ Options:
                           use either string 'Ef, Mc' or a non-spaced str:
                           Ef,Mc,Ys.
 
-Version: 1.0
+Version: 1.2
 Date: July 2018
 Written by Benito Marcote (marcote@jive.eu)
 """
@@ -49,7 +49,7 @@ parser.add_argument('-t1', '--starttime', default=None, type=str, help=help_t1)
 parser.add_argument('-t2', '--endtime', default=None, type=str, help=help_t2)
 parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
 parser.add_argument('--verbose', default=False, action='store_true')
-parser.add_argument('--timing', default=False, action='store_true')
+# parser.add_argument('--timing', default=False, action='store_true')
 
 arguments = parser.parse_args()
 
@@ -96,7 +96,7 @@ class Stokes(IntEnum):
 
 
 def atime2datetime(atime):
-    """Converts a string with the form YYYY/MM/DD/hh:mm:ss or YYYY/DOY/hh:mm:ss to MJD"""
+    """Converts a string with the form YYYY/MM/DD/hh:mm:ss or YYYY/DOY/hh:mm:ss to datetime"""
     if atime.count('/') == 3:
         # Format: YYYY/MM/DD/hh:mm:ss
         return dt.datetime.strptime(atime, '%Y/%m/%d/%H:%M:%S')
@@ -105,8 +105,6 @@ def atime2datetime(atime):
         return dt.datetime.strptime(atime, '%Y/%j/%H:%M:%S')
     else:
         raise ValueError('Date format must be YYYY/MM/DD/hh:mm:ss or YYYY/DOY/hh:mm:ss')
-
-
 
 
 def get_nedded_move(products, ant_order):
@@ -139,45 +137,29 @@ def get_nedded_move(products, ant_order):
 
 
 
-if arguments.timing:
-    if arguments.verbose:
-        print('DEBUG: starting script')
-
-    time_init = time.time()
-    time_last = time.time()
-
-
 with pt.table(msdata, readonly=False, ack=False) as ms:
     # Get CORR_TYPE, the polarization entries in the data
     changes = None
     with pt.table(ms.getkeyword('ANTENNA'), readonly=True, ack=False) as ms_ant:
         antenna_number = [i.upper() for i in ms_ant.getcol('NAME')].index(arguments.antenna.upper())
 
-    if arguments.timing:
-        print('Timing: read ANTENNA table: {:.2f} s'.format(time.time()-time_last))
-        time_last = time.time()
-
     with pt.table(ms.getkeyword('POLARIZATION'), readonly=True, ack=False) as ms_pol:
         pols_order = [Stokes(i) for i in ms_pol.getcol('CORR_TYPE')[0]]
         # Check that the stokes are the correct ones to do a cross pol.
         # Only change it if circular or linear pols.
-        if arguments.timing:
-            print('Timing: read POLARIZATION table: {:.2f} s'.format(time.time()-time_last))
-            time_last = time.time()
-
         if arguments.verbose:
             print('DEBUG: Stokes in the data: {}'.format(pols_order))
 
         for a_pol_order in pols_order:
             if (a_pol_order not in (Stokes.RR, Stokes.RL, Stokes.LR, Stokes.LL)) and \
-                            (a_pol_order not in (Stokes.XX, Stokes.XY, Stokes.YX, Stokes.YY)) and \
-                            (a_pol_order not in (Stokes.RX, Stokes.RY, Stokes.LX, Stokes.LY)) and \
-                            (a_pol_order not in (Stokes.XR, Stokes.XL, Stokes.YR, Stokes.YL)):
+               (a_pol_order not in (Stokes.XX, Stokes.XY, Stokes.YX, Stokes.YY)) and \
+               (a_pol_order not in (Stokes.RX, Stokes.RY, Stokes.LX, Stokes.LY)) and \
+               (a_pol_order not in (Stokes.XR, Stokes.XL, Stokes.YR, Stokes.YL)):
 
                 if arguments.verbose:
                     print('DEBUG: checking {}'.format(a_pol_order))
 
-                print('Polswap only works for circular or linear polarizations (and combined circular/linears).')
+                print('Polswap only works for circular or linear pols (or both combined).')
                 print('These data contain the following stokes: {}'.format(pols_order))
                 ms.close()
                 raise ValueError('Wrong stokes type.')
@@ -192,23 +174,11 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         print('DEBUG: getting ANTENNA columns...')
 
     ants = [ms.getcol('ANTENNA1'), ms.getcol('ANTENNA2')]
-    if arguments.timing:
-        print('Timing: get ANTENNA1/2 columns: {:.2f} s'.format(time.time()-time_last))
-        time_last = time.time()
 
     if arguments.verbose:
         print('DEBUG: getting TIME column...')
 
-    times = ms.getcol('TIME')
-    time_centroid = ms.getcol('TIME_CENTROID')
-    datetimes = dt.datetime(1858, 11, 17, 0, 0, 2) + times*dt.timedelta(seconds=1)
-    if arguments.timing:
-        print('Timing: get TIME columns: {:.2f} s'.format(time.time()-time_last))
-        time_last = time.time()
-
-    del times
-    del time_centroid
-
+    datetimes = dt.datetime(1858, 11, 17, 0, 0, 2) + ms.getcol('TIME')*dt.timedelta(seconds=1)
     # Get the timerange to apply to polswap
     if arguments.starttime is not None:
         datetimes_start = atime2datetime(arguments.starttime)
@@ -228,34 +198,14 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         if arguments.verbose:
             print('DEBUG: No ending time selected. Including everything before {}'.format(datetimes_end))
 
-    if arguments.timing:
-        print('Timing: obtained start/ending times: {:.2f} s'.format(time.time()-time_last))
-        time_last = time.time()
-
     for anti, changei, antpos in zip(ants, changes, ('ANTENNA1','ANTENNA2')):
         cond = np.where((anti == antenna_number) & (datetimes > datetimes_start) & (datetimes < datetimes_end))
-        if arguments.timing:
-            print('Timing: obtained selection of data: {:.2f} s'.format(time.time()-time_last))
-            time_last = time.time()
-
         for a_col in ('DATA', 'FLOAT_DATA', 'FLAG', 'SIGMA_SPECTRUM', 'WEIGHT_SPECTRUM'):
             if a_col in ms.colnames():
                 print('Modifying {} column when {} is {}'.format(a_col, arguments.antenna, antpos))
                 ms_col = ms.getcol(a_col)
-                if arguments.timing:
-                    print('Timing: got column {}: {:.2f} s'.format(a_col, time.time()-time_last))
-                    time_last = time.time()
-
                 ms_col[cond,] = ms_col[(cond),][:,:,:,changei,]
-                if arguments.timing:
-                    print('Timing: modified column {}: {:.2f} s'.format(a_col, time.time()-time_last))
-                    time_last = time.time()
-
                 ms.putcol(a_col, ms_col)
-                if arguments.timing:
-                    print('Timing: wrote column {}: {:.2f} s'.format(a_col, time.time()-time_last))
-                    time_last = time.time()
-
             else:
                 if arguments.verbose:
                     print('DEBUG: {} column not present in the dataset'.format(a_col))
@@ -264,20 +214,8 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
             if a_col in ms.colnames():
                 print('Modifying {} column'.format(a_col))
                 ms_col = ms.getcol(a_col)
-                if arguments.timing:
-                    print('Timing: got column {}: {:.2f} s'.format(a_col, time.time()-time_last))
-                    time_last = time.time()
-
                 ms_col[cond,] = ms_col[cond,][:,:,(changei),]
-                if arguments.timing:
-                    print('Timing: modified column {}: {:.2f} s'.format(a_col, time.time()-time_last))
-                    time_last = time.time()
-
                 ms.putcol(a_col, ms_col)
-                if arguments.timing:
-                    print('Timing: wrote column {}: {:.2f} s'.format(a_col, time.time()-time_last))
-                    time_last = time.time()
-
             else:
                 if arguments.verbose:
                     print('DEBUG: {} column not present in the dataset'.format(a_col))
@@ -285,6 +223,4 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
 
 
 print('\n{} modified correctly.'.format(msdata))
-if arguments.timing:
-    print('Program exited after {:.2f} min'.format((time.time()-time_init)/60.))
 
