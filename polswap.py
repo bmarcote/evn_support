@@ -11,9 +11,17 @@ Options:
                           use either string 'Ef, Mc' or a non-spaced str:
                           Ef,Mc,Ys.
 
-Version: 1.2
-Date: July 2018
+Version: 2.0
+Date: March 2020
 Written by Benito Marcote (marcote@jive.eu)
+
+version 2.0 changes (March 2020)
+- MS read and modified in chunks of data.
+- Simplified code.
+- Bug Fix? Issues in a particular MS with the wrong station only available part of the time.
+version 1.2 changes (July 2018)
+- Several bug fixes.
+
 """
 
 import sys
@@ -48,7 +56,7 @@ parser.add_argument('antenna', type=str, help=help_antenna)
 parser.add_argument('-t1', '--starttime', default=None, type=str, help=help_t1)
 parser.add_argument('-t2', '--endtime', default=None, type=str, help=help_t2)
 parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
-parser.add_argument('--verbose', default=False, action='store_true')
+# parser.add_argument('--verbose', default=False, action='store_true')
 # parser.add_argument('--timing', default=False, action='store_true')
 
 arguments = parser.parse_args()
@@ -93,6 +101,13 @@ class Stokes(IntEnum):
     PFlinear = 31 # linear Polarization Fraction (Plinear/I)
     Pangle = 32 # linear polarization angle (0.5  arctan(U/Q)) (in radians)
 
+
+
+def chunkert(f, l, cs, verbose=True):
+    while f<l:
+        n = min(cs, l-f)
+        yield (f, n)
+        f = f + n
 
 
 def atime2datetime(atime):
@@ -147,17 +162,11 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         pols_order = [Stokes(i) for i in ms_pol.getcol('CORR_TYPE')[0]]
         # Check that the stokes are the correct ones to do a cross pol.
         # Only change it if circular or linear pols.
-        if arguments.verbose:
-            print('DEBUG: Stokes in the data: {}'.format(pols_order))
-
         for a_pol_order in pols_order:
             if (a_pol_order not in (Stokes.RR, Stokes.RL, Stokes.LR, Stokes.LL)) and \
                (a_pol_order not in (Stokes.XX, Stokes.XY, Stokes.YX, Stokes.YY)) and \
                (a_pol_order not in (Stokes.RX, Stokes.RY, Stokes.LX, Stokes.LY)) and \
                (a_pol_order not in (Stokes.XR, Stokes.XL, Stokes.YR, Stokes.YL)):
-
-                if arguments.verbose:
-                    print('DEBUG: checking {}'.format(a_pol_order))
 
                 print('Polswap only works for circular or linear pols (or both combined).')
                 print('These data contain the following stokes: {}'.format(pols_order))
@@ -170,56 +179,39 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         changes = [get_nedded_move(pols_prod, i) for i in (0, 1)]
 
     # transpose data for columns DATA, WEIGHT_SPECTRUM (if exists)
-    if arguments.verbose:
-        print('DEBUG: getting ANTENNA columns...')
-
     ants = [ms.getcol('ANTENNA1'), ms.getcol('ANTENNA2')]
-
-    if arguments.verbose:
-        print('DEBUG: getting TIME column...')
 
     datetimes = dt.datetime(1858, 11, 17, 0, 0, 2) + ms.getcol('TIME')*dt.timedelta(seconds=1)
     # Get the timerange to apply to polswap
     if arguments.starttime is not None:
         datetimes_start = atime2datetime(arguments.starttime)
-        if arguments.verbose:
-            print('DEBUG: restricted to times after {}'.format(datetimes_start))
     else:
         datetimes_start = datetimes[0] - dt.timedelta(seconds=1)
-        if arguments.verbose:
-            print('DEBUG: No starting time selected. Including everything after {}'.format(datetimes_start))
 
     if arguments.endtime is not None:
         datetimes_end = atime2datetime(arguments.endtime)
-        if arguments.verbose:
-            print('DEBUG: restricted to times before {}'.format(datetimes_end))
     else:
         datetimes_end = datetimes[-1] + dt.timedelta(seconds=1)
-        if arguments.verbose:
-            print('DEBUG: No ending time selected. Including everything before {}'.format(datetimes_end))
 
     for anti, changei, antpos in zip(ants, changes, ('ANTENNA1','ANTENNA2')):
         cond = np.where((anti == antenna_number) & (datetimes > datetimes_start) & (datetimes < datetimes_end))
         for a_col in ('DATA', 'FLOAT_DATA', 'FLAG', 'SIGMA_SPECTRUM', 'WEIGHT_SPECTRUM'):
             if a_col in ms.colnames():
                 print('Modifying {} column when {} is {}'.format(a_col, arguments.antenna, antpos))
-                ms_col = ms.getcol(a_col)
-                ms_col[cond,] = ms_col[(cond),][:,:,:,changei,]
-                ms.putcol(a_col, ms_col)
-            else:
-                if arguments.verbose:
-                    print('DEBUG: {} column not present in the dataset'.format(a_col))
+                for (start, nrow) in chunkert(0, len(ms), 5000):
+                    # shape: (nrow, npol, nfreq)
+                    ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
+                    ms_col[cond,] = ms_col[cond,][:,:,:,changei,]
+                    ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
 
         for a_col in ('WEIGHT', 'SIGMA'):
             if a_col in ms.colnames():
                 print('Modifying {} column'.format(a_col))
-                ms_col = ms.getcol(a_col)
-                ms_col[cond,] = ms_col[cond,][:,:,(changei),]
-                ms.putcol(a_col, ms_col)
-            else:
-                if arguments.verbose:
-                    print('DEBUG: {} column not present in the dataset'.format(a_col))
-        # Not including FLAG_CATEGORY because it is not recognized when openned in normal MSs
+                for (start, nrow) in chunkert(0, len(ms), 5000):
+                    # shape: (nrow, npol)
+                    ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
+                    ms_col[cond,] = ms_col[cond,][:,:,changei,]
+                    ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
 
 
 print('\n{} modified correctly.'.format(msdata))
