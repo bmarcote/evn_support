@@ -11,10 +11,16 @@ Options:
                           use either string 'Ef, Mc' or a non-spaced str:
                           Ef,Mc,Ys.
 
-Version: 2.0
+Version: 3.0
 Date: March 2020
 Written by Benito Marcote (marcote@jive.eu)
 
+version 3.0 changes (March 2020)
+- Columns with different dimensions grouped together in code.
+- Fix memory bug.
+- Not it modifies all expected columns for each chunk of (time) data.
+  Before it was the opposite: modify one column at the time.
+- Progress bar implemented.
 version 2.0 changes (March 2020)
 - MS read and modified in chunks of data.
 - Simplified code.
@@ -62,6 +68,15 @@ parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
 arguments = parser.parse_args()
 
 msdata = arguments.msdata[:-1] if arguments.msdata[-1]=='/' else arguments.msdata
+
+
+
+def cli_progress_bar(current_val, end_val, bar_length=40):
+        percent = current_val/end_val
+        hashes = '#'*int(round(percent*bar_length))
+        spaces = ' '*(bar_length-len(hashes))
+        sys.stdout.write("\rProgress: [{0}] {1}%".format(hashes+spaces, int(round(percent*100))))
+        sys.stdout.flush()
 
 
 class Stokes(IntEnum):
@@ -151,7 +166,6 @@ def get_nedded_move(products, ant_order):
     return np.array([pols_prod.index(i) for i in pols_prod_mod])
 
 
-
 with pt.table(msdata, readonly=False, ack=False) as ms:
     # Get CORR_TYPE, the polarization entries in the data
     changes = None
@@ -179,39 +193,49 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         changes = [get_nedded_move(pols_prod, i) for i in (0, 1)]
 
     # transpose data for columns DATA, WEIGHT_SPECTRUM (if exists)
-    ants = [ms.getcol('ANTENNA1'), ms.getcol('ANTENNA2')]
+    # ants = [ms.getcol('ANTENNA1'), ms.getcol('ANTENNA2')]
 
-    datetimes = dt.datetime(1858, 11, 17, 0, 0, 2) + ms.getcol('TIME')*dt.timedelta(seconds=1)
+    with pt.table(ms.getkeyword('OBSERVATION'), readonly=True, ack=False) as ms_obs:
+        time_range = dt.datetime(1858, 11, 17, 0, 0, 2) + \
+                     ms_obs.getcol('TIME_RANGE')*dt.timedelta(seconds=1)
+
     # Get the timerange to apply to polswap
     if arguments.starttime is not None:
         datetimes_start = atime2datetime(arguments.starttime)
     else:
-        datetimes_start = datetimes[0] - dt.timedelta(seconds=1)
+        datetimes_start = time_range[0] - dt.timedelta(seconds=1)
 
     if arguments.endtime is not None:
         datetimes_end = atime2datetime(arguments.endtime)
     else:
-        datetimes_end = datetimes[-1] + dt.timedelta(seconds=1)
+        datetimes_end = time_range[1] + dt.timedelta(seconds=1)
 
-    for anti, changei, antpos in zip(ants, changes, ('ANTENNA1','ANTENNA2')):
-        cond = np.where((anti == antenna_number) & (datetimes > datetimes_start) & (datetimes < datetimes_end))
-        for a_col in ('DATA', 'FLOAT_DATA', 'FLAG', 'SIGMA_SPECTRUM', 'WEIGHT_SPECTRUM'):
-            if a_col in ms.colnames():
-                print('Modifying {} column when {} is {}'.format(a_col, arguments.antenna, antpos))
-                for (start, nrow) in chunkert(0, len(ms), 5000):
-                    # shape: (nrow, npol, nfreq)
-                    ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
+    # shapes of DATA, FLOAT_DATA, FLAG, SIGMA_SPECTRUM, WEIGHT_SPECTRUM: (nrow, npol, nfreq)
+    # shapes of WEIGHT, SIGMA: (nrow, npol)
+    columns = ('DATA', 'FLOAT_DATA', 'FLAG', 'SIGMA_SPECTRUM', 'WEIGHT_SPECTRUM',
+               'WEIGHT', 'SIGMA')
+    # Only leave the ones that are in the MS. Not all of them are always present.
+    columns = [a_col for a_col in columns if a_col in ms.colnames()]
+    print('The following columns will be modified: {}.'.format(', '.join(columns)))
+    for (start, nrow) in chunkert(0, len(ms), 5000):
+        cli_progress_bar(start, len(ms), bar_length=40)
+        for changei, antpos in zip(changes, ('ANTENNA1','ANTENNA2')):
+            ants = ms.getcol(antpos, startrow=start, nrow=nrow)
+            datetimes = dt.datetime(1858, 11, 17, 0, 0, 2) + \
+                        ms.getcol('TIME', startrow=start, nrow=nrow)*dt.timedelta(seconds=1)
+            cond = np.where((ants == antenna_number) & (datetimes > datetimes_start) & (datetimes < datetimes_end))
+            for a_col in columns:
+                ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
+                elif len(ms_col.shape) == 3:
                     ms_col[cond,] = ms_col[cond,][:,:,:,changei,]
-                    ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
-
-        for a_col in ('WEIGHT', 'SIGMA'):
-            if a_col in ms.colnames():
-                print('Modifying {} column'.format(a_col))
-                for (start, nrow) in chunkert(0, len(ms), 5000):
-                    # shape: (nrow, npol)
-                    ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
+                elif len(ms_col.shape) == 2:
                     ms_col[cond,] = ms_col[cond,][:,:,changei,]
-                    ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
+                elif len(ms_col.shape) == 1:
+                    ms_col[cond,] = ms_col[cond,][:,changei,]
+                else:
+                    raise ValueError('Unexpected dimensions for {} column.'.format(a_col))
+
+                ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
 
 
 print('\n{} modified correctly.'.format(msdata))
