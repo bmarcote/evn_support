@@ -196,8 +196,8 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
     # ants = [ms.getcol('ANTENNA1'), ms.getcol('ANTENNA2')]
 
     with pt.table(ms.getkeyword('OBSERVATION'), readonly=True, ack=False) as ms_obs:
-        time_range = dt.datetime(1858, 11, 17, 0, 0, 2) + \
-                     ms_obs.getcol('TIME_RANGE')*dt.timedelta(seconds=1)
+        time_range = (dt.datetime(1858, 11, 17, 0, 0, 2) + \
+                     ms_obs.getcol('TIME_RANGE')*dt.timedelta(seconds=1))[0]
 
     # Get the timerange to apply to polswap
     if arguments.starttime is not None:
