@@ -224,18 +224,19 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
             datetimes = dt.datetime(1858, 11, 17, 0, 0, 2) + \
                         ms.getcol('TIME', startrow=start, nrow=nrow)*dt.timedelta(seconds=1)
             cond = np.where((ants == antenna_number) & (datetimes > datetimes_start) & (datetimes < datetimes_end))
-            for a_col in columns:
-                ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
-                if len(ms_col.shape) == 3:
-                    ms_col[cond,] = ms_col[cond,][:,:,:,changei,]
-                elif len(ms_col.shape) == 2:
-                    ms_col[cond,] = ms_col[cond,][:,:,changei,]
-                elif len(ms_col.shape) == 1:
-                    ms_col[cond,] = ms_col[cond,][:,changei,]
-                else:
-                    raise ValueError('Unexpected dimensions for {} column.'.format(a_col))
+            if len(cond[0]) > 0:
+                for a_col in columns:
+                    ms_col = ms.getcol(a_col, startrow=start, nrow=nrow)
+                    if len(ms_col.shape) == 3:
+                        ms_col[cond,] = ms_col[cond,][:,:,:,changei,]
+                    elif len(ms_col.shape) == 2:
+                        ms_col[cond,] = ms_col[cond,][:,:,changei,]
+                    elif len(ms_col.shape) == 1:
+                        ms_col[cond,] = ms_col[cond,][:,changei,]
+                    else:
+                        raise ValueError('Unexpected dimensions for {} column.'.format(a_col))
 
-                ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
+                    ms.putcol(a_col, ms_col, startrow=start, nrow=nrow)
 
 
 print('\n{} modified correctly.'.format(msdata))
