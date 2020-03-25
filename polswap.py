@@ -216,7 +216,7 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
                'WEIGHT', 'SIGMA')
     # Only leave the ones that are in the MS. Not all of them are always present.
     columns = [a_col for a_col in columns if a_col in ms.colnames()]
-    print('The following columns will be modified: {}.'.format(', '.join(columns)))
+    print('\nThe following columns will be modified: {}.\n'.format(', '.join(columns)))
     for (start, nrow) in chunkert(0, len(ms), 5000):
         cli_progress_bar(start, len(ms), bar_length=40)
         for changei, antpos in zip(changes, ('ANTENNA1','ANTENNA2')):
