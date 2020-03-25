@@ -8,11 +8,13 @@ Options:
     threshold : float     Visibilities with a weight below the specified
                           value will be flagged. Must be positive.
 
-Version: 3.0
-Date: Apr 2019
+Version: 3.1
+Date: Mar 2020
 Written by Benito Marcote (marcote@jive.eu)
 
-version 3.0 changes
+version 3.1 changes (Mar 2020)
+- Progress bar added.
+version 3.0 changes (Apr 2019)
 - Refactoring code (thanks to Harro).
 version 2.0 changes
 - Major revision. Now it does not modify the weights anymore. Instead, it
@@ -86,8 +88,14 @@ def chunkert(f, l, cs, verbose=True):
         yield (f, n)
         f = f + n
 
+def cli_progress_bar(current_val, end_val, bar_length=40):
+        percent = current_val/end_val
+        hashes = '#'*int(round(percent*bar_length))
+        spaces = ' '*(bar_length-len(hashes))
+        sys.stdout.write("\rProgress: [{0}] {1}%".format(hashes+spaces, int(round(percent*100))))
+        sys.stdout.flush()
 
-percent = lambda x, y: (float(x)/float(y)) * 100.0
+percent = lambda x, y: (float(x)/float(y))*100.0
 
 
 with pt.table(msdata, readonly=False, ack=False) as ms:
@@ -100,6 +108,7 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
     weightcol = 'WEIGHT_SPECTRUM' if 'WEIGHT_SPECTRUM' in ms.colnames() else 'WEIGHT'
     transpose = (lambda x:x) if weightcol == 'WEIGHT_SPECTRUM' else (lambda x: x.transpose((1, 0, 2)))
     for (start, nrow) in chunkert(0, len(ms), 5000):
+        cli_progress_bar(start, len(ms), bar_length=40)
         # shape: (nrow, npol, nfreq)
         flags = transpose(ms.getcol("FLAG", startrow=start, nrow=nrow))
         total_number += np.product(flags.shape)
@@ -121,7 +130,7 @@ with pt.table(msdata, readonly=False, ack=False) as ms:
         if verbose:
             flags = ms.putcol("FLAG", transpose(flags), startrow=start, nrow=nrow)
 
-    print("Got {0:11} visibilities".format(total_number))
+    print("\nGot {0:11} visibilities".format(total_number))
     print("Got {0:11} visibilities to flag using threshold {1}\n".format(flagged_after-flagged_before,
                                                                                   threshold))
     print("{0:.2f}% total vis. flagged ({2:.2f}% to flag in this execution).\n{1:.2f}% data with non-zero weights flagged.\n".format(percent(flagged_after, total_number), percent(flagged_nonzero, total_number), percent(flagged_after-flagged_before, total_number)))
