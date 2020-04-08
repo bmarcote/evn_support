@@ -44,7 +44,9 @@ parser.add_argument('jss', type=str, default='', help='JIVE Support Scientist do
 args = parser.parse_args()
 
 
-jss = {'marcote': 'Benito Marcote', 'immer': 'Katharina Immer', 'nair': 'Dhanya Nair', '': ''}
+jss = {'marcote': 'Benito Marcote', 'immer': 'Katharina Immer',
+       'nair': 'Dhanya Nair', 'bayandina': 'Olga Bayandina', 'campbell': 'Bob Campbel',
+       'paragi': 'Zsolt Paragi', 'rmc', 'Bob Campbell', 'zparagi': 'Zsolt Paragi'}
 
 
 
@@ -60,7 +62,10 @@ def get_credentials_from_filename(thefile):
 
 
 # One of the following conditions must be true
-if args.credentials is not None:
+if args.experiment.upper()[0] == 'N' or args.experiment.upper()[0] == 'F':
+    print('This is an NME or test. No credentials will be set.')
+    username, password = '', ''
+elif args.credentials is not None:
     username, password = get_credentials_from_filename(args.credentials)
 elif (args.username is not None) and (args.password is not None):
     username, password = args.username, args.password
@@ -77,11 +82,13 @@ else:
 
 with open(template_pipelet_file, 'r') as template:
     full_text = template.read()
-    full_text = full_text.format(expname=args.experiment.upper(), delimiter='-'*(41+len(args.experiment)),
-                                 username=username, password=password, supsci=jss[args.jss])
+    full_text = full_text.format(expname=args.experiment.upper(),
+                        delimiter='-'*(41+len(args.experiment)),
+                        username=username, password=password, supsci=jss[args.jss])
 
-    pipelet_file = open('{}/{}.pipelet'.format(args.output if args.output[-1] != '/' else args.output[:-1],
-                                               args.experiment.lower()), 'w')
+    pipelet_file = open('{}/{}.pipelet'.format(
+                        args.output if args.output[-1] != '/' else args.output[:-1],
+                        args.experiment.lower()), 'w')
     pipelet_file.write(full_text)
     pipelet_file.close()
     if args.output == '.':
