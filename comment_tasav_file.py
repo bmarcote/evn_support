@@ -239,8 +239,8 @@ def parse_setup(exp, type_exp, freq, datarate, number_ifs, bandwidth, pols):
         date = subprocess.getoutput('ssh jops@ccs grep {} /ccs/var/log2vex/MASTER_PROJECTS.LIS | cut -d " " -f 4'.format(exp.upper()))
     if '\n' in date:
         # Can happen in case of e-EVNs if this is not the official run exp name.
-        #date = date.replace('\n','').strip()
-        date = date.split('\n')[-1].strip()
+        date = date.replace('\n','').strip()
+        # date = date.split('\n')[-1].strip()
     obsdate = dt.strptime(date, '%Y%m%d')
     if freq < 0.6:
         band = 'P'
